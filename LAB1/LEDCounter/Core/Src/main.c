@@ -19,6 +19,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32l476xx.h"
+#include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_gpio.h"
+#include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -90,8 +93,33 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  GPIOC->MODER &= ~(GPIO_MODER_MODE0 | GPIO_MODER_MODE1 | GPIO_MODER_MODE2);
+  // Enable GPIO Port A and C clocks
+  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOCEN); 
 
+  // PC0, PC1, PC2 as output
+  GPIOC->MODER &= ~(GPIO_MODER_MODE0 | GPIO_MODER_MODE1 | GPIO_MODER_MODE2);
+  GPIOC->MODER |= (GPIO_MODER_MODE0_0 | GPIO_MODER_MODE1_0 | GPIO_MODER_MODE2_0);
+
+  // push pull
+  GPIOC->OTYPER &= ~(GPIO_OTYPER_OT0 | GPIO_OTYPER_OT1 | GPIO_OTYPER_OT_2);
+  // no pullup/pulldown
+  GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPD0 | GPIO_PUPDR_PUPD1 | GPIO_PUPDR_PUPD2);
+  // default speed
+  GPIOC->OSPEEDR &= ~(GPIO_OSPEEDER_OSPEEDR0 | GPIO_OSPEEDER_OSPEEDR1 | GPIO_OSPEEDER_OSPEEDR2);
+
+  
+  // PA4 as input
+  GPIOA->MODER &= ~(GPIO_MODER_MODE4);
+  // Pull-up mode (active low)
+  GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPD4);
+  GPIOA->PUPDR |= (GPIO_PUPDR_PUPD4_0);
+
+  GPIOA->OSPEEDR &= ~(GPIO_OSPEEDER_OSPEEDR4);
+
+  // Set LED output into known state
+  GPIOC->BRR &= (GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2);
+  // Init counter variable
+  int led_counter = 0;
 
   /* USER CODE END 2 */
 
@@ -100,6 +128,24 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+    if ((GPIOA->IDR & GPIO_PIN_4) == 0) {
+      HAL_Delay(50);
+      if ((GPIOA->IDR & GPIO_PIN_4) == 0) {
+        GPIOC->ODR &= ~(GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2);
+        led_counter += 1;
+        if (led_counter >= 7) led_counter = 0;
+
+        uint16_t out_b0 = (led_counter & 1) ? GPIO_PIN_0 : 0;
+        uint16_t out_b1 = (led_counter & 2) ? GPIO_PIN_1 : 0;
+        uint16_t out_b2 = (led_counter & 4) ? GPIO_PIN_2 : 0;
+
+        GPIOC->ODR |= (out_b0 | out_b1 | out_b2);
+
+        HAL_Delay(200);
+      }
+    }
+
+    HAL_Delay(10);
 
     /* USER CODE BEGIN 3 */
   }
