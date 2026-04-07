@@ -18,10 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32l476xx.h"
-#include "stm32l4xx_hal.h"
-#include "stm32l4xx_hal_gpio.h"
-#include <stdint.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -52,6 +48,7 @@ UART_HandleTypeDef huart2;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -69,6 +66,12 @@ static void MX_USART2_UART_Init(void);
 int main(void)
 {
 
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
@@ -84,36 +87,9 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
-  // Enable GPIO Port A and C clocks
-  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOCEN); 
-
-  // PC0, PC1, PC2 as output
-  GPIOC->MODER &= ~(GPIO_MODER_MODE0 | GPIO_MODER_MODE1 | GPIO_MODER_MODE2);
-  GPIOC->MODER |= (GPIO_MODER_MODE0_0 | GPIO_MODER_MODE1_0 | GPIO_MODER_MODE2_0);
-
-  // push pull
-  GPIOC->OTYPER &= ~(GPIO_OTYPER_OT0 | GPIO_OTYPER_OT1 | GPIO_OTYPER_OT_2);
-  // no pullup/pulldown
-  GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPD0 | GPIO_PUPDR_PUPD1 | GPIO_PUPDR_PUPD2);
-  // default speed
-  GPIOC->OSPEEDR &= ~(GPIO_OSPEEDER_OSPEEDR0 | GPIO_OSPEEDER_OSPEEDR1 | GPIO_OSPEEDER_OSPEEDR2);
-
-  
-  // PA4 as input
-  GPIOA->MODER &= ~(GPIO_MODER_MODE4);
-  // Pull-up mode (active low)
-  GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPD4);
-  GPIOA->PUPDR |= (GPIO_PUPDR_PUPD4_0);
-
-  GPIOA->OSPEEDR &= ~(GPIO_OSPEEDER_OSPEEDR4);
-
-  // Set LED output into known state
-  GPIOC->BRR &= (GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2);
-  // Init counter variable
-  int led_counter = 0;
 
   /* USER CODE END 2 */
 
@@ -122,24 +98,6 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    if ((GPIOA->IDR & GPIO_PIN_4) == 0) {
-      HAL_Delay(50);
-      if ((GPIOA->IDR & GPIO_PIN_4) == 0) {
-        GPIOC->ODR &= ~(GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2);
-        led_counter += 1;
-        if (led_counter >= 7) led_counter = 0;
-
-        uint16_t out_b0 = (led_counter & 1) ? GPIO_PIN_0 : 0;
-        uint16_t out_b1 = (led_counter & 2) ? GPIO_PIN_1 : 0;
-        uint16_t out_b2 = (led_counter & 4) ? GPIO_PIN_2 : 0;
-
-        GPIOC->ODR |= (out_b0 | out_b1 | out_b2);
-
-        HAL_Delay(200);
-      }
-    }
-
-    HAL_Delay(10);
 
     /* USER CODE BEGIN 3 */
   }
@@ -228,6 +186,45 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 2 */
 
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+
+  /* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : B1_Pin */
+  GPIO_InitStruct.Pin = B1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : LD2_Pin */
+  GPIO_InitStruct.Pin = LD2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
+
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
