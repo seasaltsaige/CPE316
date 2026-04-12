@@ -68,6 +68,10 @@ void GPIO_Init() {
   // PA0, PA1, PA9, PA10
   // Tried using PA2 and PA3,
   // but it seems to cause issues with the uart TX/RX
+  // Found why this happened, don't super want to change back even though
+  // its not that hard to...
+  // It is specifically an issue with STLink, since they use PA2 and PA3
+  // even if not configured. They are reserved with STLink
   GPIOA->MODER &= ~(
                     GPIO_MODER_MODE0 | GPIO_MODER_MODE1 | 
                     GPIO_MODER_MODE9 | GPIO_MODER_MODE10 | 
@@ -105,7 +109,7 @@ void GPIO_Init() {
 int16_t read_keypad() {
 
   for (uint8_t col = 0; col < NUM_COLS; col++) {
-    // Drive current column high, all others low
+    // Drive current column high, all other columns low
     GPIOB->ODR &= ~KEYPAD_COLS;
     GPIOB->ODR |= COL_PINS[col];
     HAL_Delay(1);
