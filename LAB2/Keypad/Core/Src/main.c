@@ -29,7 +29,7 @@ const int keypad_map[NUM_ROWS][NUM_COLS] = {
 
 void SystemClock_Config(void);
 int16_t read_keypad();
-void init_gpio();
+void GPIO_Init();
 
 int main(void) {
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -38,7 +38,7 @@ int main(void) {
   SystemClock_Config();
   RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOBEN | RCC_AHB2ENR_GPIOAEN);
 
-  init_gpio();
+  GPIO_Init();
 
   while (1) {
     // Initial keypad read
@@ -63,7 +63,7 @@ int main(void) {
   }
 }
 
-void init_gpio() {
+void GPIO_Init() {
   // ROWS  input w/ pull-downs
   // PA0, PA1, PA9, PA10
   // Tried using PA2 and PA3,
