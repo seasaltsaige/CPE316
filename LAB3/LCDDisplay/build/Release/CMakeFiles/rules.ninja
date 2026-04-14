@@ -62,7 +62,7 @@ rule C_COMPILER__STM32_Drivers_unscanned_Release
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = C:\Users\orion\AppData\Local\stm32cube\bundles\cmake\4.2.3+st.1\bin\cmake.exe --regenerate-during-build -SG:\projects\CPE316\LAB3\LCDDisplay -BG:\projects\CPE316\LAB3\LCDDisplay\build\Release
+  command = C:\Users\orion\AppData\Local\stm32cube\bundles\cmake\4.2.3+st.1\bin\cmake.exe --regenerate-during-build -SD:\CPE316\LAB3\LCDDisplay -BD:\CPE316\LAB3\LCDDisplay\build\Release
   description = Re-running CMake...
   generator = 1
 
