@@ -11,8 +11,9 @@ int main(void)
   HAL_Init();
 
   RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOBEN | RCC_AHB2ENR_GPIOAEN);
-  
+  // Init GPIO pins
   GPIO_Init();
+  // LCD Startup sequence as defined by datasheet
   LCD_startup();
 
   while (1)
