@@ -2,21 +2,18 @@
 #include "stm32l4xx_hal.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
-
-uint8_t row_offsets[4] = {
-    0x00,
-    0x40,
-    0x10,
-    0x50
-};
-
+#define TYPING_VARIABILITY 300
 
 void LCD_startup() {
     
     // Wait for more than 30ms on init
     HAL_Delay(100);
 
+    // 0x38
+    // 0011 1100 = Function set, 
     LCD_write(LCD_CMD_FS, W_CMD);
     
     // At least 40us
@@ -37,47 +34,47 @@ void LCD_startup() {
     return;
 }
 
-void LCD_write_string(char* data, uint8_t length) {
-    LCD_write(LCD_CMD_CLEAR, W_CMD);
-    LCD_write(LCD_CMD_HOME, W_CMD);
+static void typing_delay() {
+    HAL_Delay(TYPING_SPEED + (rand() % TYPING_VARIABILITY));
+}
+
+void LCD_write_string(char* top, char* bottom) {
+    // Clear screen and home cursor
+    LCD_clear();
 
     uint8_t i;
-    // Write top half
-    for (i = 0; i < (LCD_MAX_CHARS / 2) ; i++) {
-        if (i == length) return;
-        // If space, move right instead of write
-        // if (data[i] == ' ')
-        //     LCD_write(0x14, W_CMD);
-        // else if (data == '\0')
-        //     continue;
-        // else
-        
-        if (data[i] <= 2 || data[i] >= 0xFF) continue;
-            LCD_write(data[i], W_DAT);
 
-        HAL_Delay(TYPING_SPEED);
+    // Write top half
+    for (i = 0; (i < strlen(top)) && (i < LCD_COLS); i++) {
+        LCD_write(top[i], W_DAT);
+        typing_delay();
     }
 
-    uint8_t cols = 16;
-    uint8_t rows = 2;
-    uint8_t move_cursor = LCD_DDRAM_SET | (0x40);
-    LCD_write(move_cursor, W_CMD);
+    // Move cursor to first column of second row
+    LCD_move_cursor(LCD_COL_ONE, LCD_ROW_TWO);
     
-    for (; i < LCD_MAX_CHARS; i++) {
-        if (i == length) return;
-        // If space, move right instead of write
-        // if (data[i] == ' ')
-        //     LCD_write(0x14, W_CMD);
-        // else if (data == '\0')
-        //     continue;
-        if (data[i] <= 2 || data[i] >= 0xFF) continue;
-        // else
-            LCD_write(data[i], W_DAT);
-        
-        HAL_Delay(TYPING_SPEED);
+    for (i = 0; (i < strlen(bottom)) && (i < LCD_COLS); i++) {
+        LCD_write(bottom[i], W_DAT);
+        typing_delay();
     }
 
     return;
+}
+
+void LCD_move_cursor(uint8_t col, uint8_t row) {
+    // Row 1 ddram len = 0x3F, so setting DDRAM address to
+    // 0x40 will offset cursor to second row. 
+    uint8_t move_cursor_cmd = LCD_DDRAM_SET | ((col - 1) + (0x40 * (row - 1)));
+    LCD_write(move_cursor_cmd, W_CMD);
+}
+
+void LCD_backspace(uint8_t count) {
+    for (uint8_t i = 0; i < count; i++)
+        LCD_write(LCD_CURS_SHFT | LCD_MOVE_CURS | LCD_MOVE_LEFT , W_CMD);
+    for (uint8_t i = 0; i < count; i++) 
+        LCD_write(' ', W_DAT);
+    for (uint8_t i = 0; i < count; i++)
+        LCD_write(LCD_CURS_SHFT | LCD_MOVE_CURS | LCD_MOVE_LEFT , W_CMD);
 }
 
 void LCD_write(uint8_t data, uint8_t mode) {
@@ -105,4 +102,9 @@ void LCD_write(uint8_t data, uint8_t mode) {
     // Reset
     LCD_PORT->BRR |= (LCD_E);
     return;
+}
+
+void LCD_clear() {
+    LCD_write(LCD_CMD_CLEAR, W_CMD);
+    LCD_write(LCD_CMD_HOME, W_CMD);
 }

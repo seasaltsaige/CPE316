@@ -7,6 +7,9 @@
 
 void SystemClock_Config(void);
 void GPIO_Init();
+void write_presses();
+
+static uint8_t press_counter = 0;
 
 int main(void)
 {
@@ -18,26 +21,93 @@ int main(void)
   GPIO_Init();
   // LCD Startup sequence as defined by datasheet
   LCD_startup();
-  char *string = "Hello, world!\nAssignment 3";
-  LCD_write_string(string, strlen(string));
-  while (1)
-  {
-    
+
+  char *top_string = "Hello, world!";
+  char *bottom_string = "Assignment 3";
+  LCD_write_string(top_string, bottom_string);
+  
+  for (int i = 0; i < 4; i++)
+    LCD_write(' ', W_DAT);
+
+  write_presses();
+  // Monitor reset button
+  for (;;) {
+    if (GPIOB->IDR & CNT_BTN) {
+      HAL_Delay(50);
+      if (GPIOB->IDR & CNT_BTN) {
+        // Valid button press
+        press_counter++;
+        write_presses();
+        HAL_Delay(10);
+      }
+    }
   }
+}
+
+void write_presses() {
+  LCD_backspace(3);
+  uint8_t curr_cnt = press_counter;
+
+  uint8_t ones = curr_cnt % 10;
+  curr_cnt /= 10;
+  uint8_t tens = curr_cnt % 10;
+  curr_cnt /= 10;
+  uint8_t hund = curr_cnt % 10;
+  curr_cnt /= 10;
+
+  LCD_write(hund != 0 ? hund + 48 : ' ', W_DAT);
+  LCD_write(tens != 0 || hund != 0 ? tens + 48 : ' ', W_DAT);
+  LCD_write(ones + 48, W_DAT);  
 }
 
 void GPIO_Init() {
   // Configure data pins as outputs
   // PB0-7 correspond to D0-7
   // PB8 = RS, PB9 = RW, PB10 = E
-  LCD_PORT->MODER &= ~(GPIO_MODER_MODE0 | GPIO_MODER_MODE1 | GPIO_MODER_MODE2 | GPIO_MODER_MODE3 | GPIO_MODER_MODE4 | GPIO_MODER_MODE5 | GPIO_MODER_MODE6 | GPIO_MODER_MODE7 | GPIO_MODER_MODE8 | GPIO_MODER_MODE9 | GPIO_MODER_MODE10);
-  LCD_PORT->MODER |= (GPIO_MODER_MODE0_0 | GPIO_MODER_MODE1_0 | GPIO_MODER_MODE2_0 | GPIO_MODER_MODE3_0 | GPIO_MODER_MODE4_0 | GPIO_MODER_MODE5_0 | GPIO_MODER_MODE6_0 | GPIO_MODER_MODE7_0 | GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0 | GPIO_MODER_MODE10_0);
+  // PB11 = reset button, pulldown
+  LCD_PORT->MODER &= ~(
+    GPIO_MODER_MODE0 | GPIO_MODER_MODE1 | 
+    GPIO_MODER_MODE2 | GPIO_MODER_MODE3 | 
+    GPIO_MODER_MODE4 | GPIO_MODER_MODE5 | 
+    GPIO_MODER_MODE6 | GPIO_MODER_MODE7 | 
+    GPIO_MODER_MODE8 | GPIO_MODER_MODE9 | 
+    GPIO_MODER_MODE10 | GPIO_MODER_MODE11
+  );
+
+  // PB0-10 = output, PB11 = input
+  LCD_PORT->MODER |= (
+    GPIO_MODER_MODE0_0 | GPIO_MODER_MODE1_0 | 
+    GPIO_MODER_MODE2_0 | GPIO_MODER_MODE3_0 | 
+    GPIO_MODER_MODE4_0 | GPIO_MODER_MODE5_0 | 
+    GPIO_MODER_MODE6_0 | GPIO_MODER_MODE7_0 | 
+    GPIO_MODER_MODE8_0 | GPIO_MODER_MODE9_0 | 
+    GPIO_MODER_MODE10_0
+  );
+
+  // Pull down on PB11
+  LCD_PORT->PUPDR &= ~GPIO_PUPDR_PUPD11;
+  LCD_PORT->PUPDR |= GPIO_PUPDR_PUPD11_1;
+
 
   // Push pull
-  LCD_PORT->OTYPER &= ~(GPIO_OTYPER_OT0 | GPIO_OTYPER_OT1 | GPIO_OTYPER_OT2 | GPIO_OTYPER_OT3 | GPIO_OTYPER_OT4 | GPIO_OTYPER_OT5 | GPIO_OTYPER_OT6 | GPIO_OTYPER_OT7 | GPIO_OTYPER_OT8 | GPIO_OTYPER_OT9 | GPIO_OTYPER_OT10);
+  LCD_PORT->OTYPER &= ~(
+    GPIO_OTYPER_OT0 | GPIO_OTYPER_OT1 | 
+    GPIO_OTYPER_OT2 | GPIO_OTYPER_OT3 | 
+    GPIO_OTYPER_OT4 | GPIO_OTYPER_OT5 | 
+    GPIO_OTYPER_OT6 | GPIO_OTYPER_OT7 | 
+    GPIO_OTYPER_OT8 | GPIO_OTYPER_OT9 | 
+    GPIO_OTYPER_OT10
+  );
 
   // Default speed
-  LCD_PORT->OSPEEDR &= ~(GPIO_OSPEEDER_OSPEEDR0 | GPIO_OSPEEDER_OSPEEDR1 | GPIO_OSPEEDER_OSPEEDR2 | GPIO_OSPEEDER_OSPEEDR3 | GPIO_OSPEEDER_OSPEEDR4 | GPIO_OSPEEDER_OSPEEDR5 | GPIO_OSPEEDER_OSPEEDR6 | GPIO_OSPEEDER_OSPEEDR7 | GPIO_OSPEEDER_OSPEEDR8 | GPIO_OSPEEDER_OSPEEDR9 | GPIO_OSPEEDER_OSPEEDR10);
+  LCD_PORT->OSPEEDR &= ~(
+    GPIO_OSPEEDER_OSPEEDR0 | GPIO_OSPEEDER_OSPEEDR1 | 
+    GPIO_OSPEEDER_OSPEEDR2 | GPIO_OSPEEDER_OSPEEDR3 | 
+    GPIO_OSPEEDER_OSPEEDR4 | GPIO_OSPEEDER_OSPEEDR5 | 
+    GPIO_OSPEEDER_OSPEEDR6 | GPIO_OSPEEDER_OSPEEDR7 | 
+    GPIO_OSPEEDER_OSPEEDR8 | GPIO_OSPEEDER_OSPEEDR9 | 
+    GPIO_OSPEEDER_OSPEEDR10
+  );
 
   // Set all output pins low to start
   LCD_PORT->BRR |= (LCD_DATA_PIN_MASK | LCD_RS | LCD_RW | LCD_E);
