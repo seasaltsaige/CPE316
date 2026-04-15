@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#define NUM_TO_CHAR(VAL) (VAL + 48) 
+
 void SystemClock_Config(void);
 void GPIO_Init();
 void write_presses();
@@ -55,9 +57,9 @@ void write_presses() {
   uint8_t hund = curr_cnt % 10;
   curr_cnt /= 10;
 
-  LCD_write(hund != 0 ? hund + 48 : ' ', W_DAT);
-  LCD_write(tens != 0 || hund != 0 ? tens + 48 : ' ', W_DAT);
-  LCD_write(ones + 48, W_DAT);  
+  LCD_write(hund != 0 ? NUM_TO_CHAR(hund) : ' ', W_DAT);
+  LCD_write((tens != 0 || hund != 0) ? NUM_TO_CHAR(tens) : ' ', W_DAT);
+  LCD_write(NUM_TO_CHAR(ones), W_DAT);  
 }
 
 void GPIO_Init() {
