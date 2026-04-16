@@ -20,7 +20,7 @@ const uint16_t ROW_PINS[NUM_ROWS] = { GPIO_PIN_0, GPIO_PIN_1, GPIO_PIN_9, GPIO_P
 
 // Note: [3][0] = '*' (display 14)
 // [3][2] = '#' (display 15)
-const int keypad_map[NUM_ROWS][NUM_COLS] = {
+const uint16_t keypad_map[NUM_ROWS][NUM_COLS] = {
   {1, 2, 3},
   {4, 5, 6},
   {7, 8, 9},
