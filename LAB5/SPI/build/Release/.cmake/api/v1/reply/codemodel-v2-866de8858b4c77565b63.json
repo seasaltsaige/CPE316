@@ -78,14 +78,14 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "SPI::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-SPI-Release-22b5755bfb3b174a7acb.json",
+					"jsonFile" : "target-SPI-Release-68d26ef992de7fb01bd8.json",
 					"name" : "SPI",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 1,
 					"id" : "STM32_Drivers::@768a070a0fe75716b479",
-					"jsonFile" : "target-STM32_Drivers-Release-933fdc1fa92bb249765d.json",
+					"jsonFile" : "target-STM32_Drivers-Release-27a470e7f3ccf7888288.json",
 					"name" : "STM32_Drivers",
 					"projectIndex" : 0
 				}
