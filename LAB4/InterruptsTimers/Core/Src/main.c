@@ -5,6 +5,13 @@ void GPIO_Init();
 void TIMER_Init();
 
 void TIM2_IRQHandler(void) {
+
+  if (TIM2->SR & TIM_SR_UIF) {
+    TIM2->SR &= ~TIM_SR_UIF;
+    GPIOA->ODR ^= GPIO_PIN_5;
+  }
+
+
   if (TIM2->SR & TIM_SR_CC1IF) {
     TIM2->SR &= ~(TIM_SR_CC1IF);
     GPIOB->BRR = GPIO_PIN_0;
@@ -20,8 +27,21 @@ int main(void)
 {
   HAL_Init();
   SystemClock_Config();
-  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOBEN);
- 
+  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN);
+  RCC->APB1ENR1 |= (RCC_APB1ENR1_TIM2EN);
+
+  // Configure to output
+  GPIOA->MODER &= ~(GPIO_MODER_MODE5);
+  GPIOA->MODER |= GPIO_MODER_MODE5_0;
+
+  TIM2->PSC = 4000 - 1; // divide 4Mhz clock by 4000
+  TIM2->ARR = 1000 - 1; // arr will fire every 1000 cycles
+  // 4Mhz / (4000) = 1khz / 1000 = 1hz
+  NVIC->ISER[0] = (1 << (TIM2_IRQn & 0x1F));
+  TIM2->DIER |= TIM_DIER_UIE; // enable
+  TIM2->CR1 |= TIM_CR1_CEN;
+
+
   GPIO_Init();
   TIMER_Init();
   

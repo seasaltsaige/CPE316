@@ -2,6 +2,7 @@
 #include "keypad.h"
 #include "lcd.h"
 #include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_flash.h"
 #include <stdint.h>
 
 static char passcode[LCD_COLS] = {0};
@@ -113,29 +114,13 @@ void LOCKBOX_read_input() {
           for (int i = 0; i < user_entry_pos; i++) {
             passcode[i] = user_entry[i];
           }
-          // Set new 
+          // Set new passcode length
           PASSCODE_LEN = user_entry_pos;
           lock();
           is_locked = 1;
           user_entry_pos = 0;
         }
       }
-      // uint8_t compared = compare_passcodes();
-      // if (compared) {
-
-      //   reset_passcode();
-      //   if (is_locked) {
-      //     unlock();
-      //     is_locked = 0;
-      //   } else {
-      //     lock();
-      //     is_locked = 1;
-      //   }
-      // } else {
-      //   reset_passcode();
-      //   lockbox_incorrect_seq();
-      // }
-      // Passcode 'reset'
     } else if (key == '*')
       reset_passcode();
     // Regular char entry
