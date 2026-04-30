@@ -1,4 +1,5 @@
 #include "main.h"
+#include "stm32l476xx.h"
 
 void SystemClock_Config(void);
 
@@ -6,9 +7,15 @@ int main(void) {
   HAL_Init();
   SystemClock_Config();
 
+  // enable spi clock and gpio A clock
+  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOAEN); 
+
   while (1) {
+
+    SPI1->CR1
   }
 }
+
 
 void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};

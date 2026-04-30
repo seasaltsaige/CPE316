@@ -1,0 +1,6 @@
+{
+  "tz": "TZ-disabled",
+  "toolchain": "GCC",
+  "board": "NUCLEO-L476RG",
+  "device": "STM32L476RGT3"
+}
