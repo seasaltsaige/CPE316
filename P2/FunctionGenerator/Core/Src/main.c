@@ -12,7 +12,6 @@ int main(void) {
 
   while (1) {
 
-    SPI1->CR1
   }
 }
 
