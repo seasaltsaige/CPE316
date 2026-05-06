@@ -1,20 +1,64 @@
 #include "main.h"
 #include "stm32l476xx.h"
-
+#include "DAC.h"
+#include "stm32l4xx_hal.h"
+#include <stdint.h>
 void SystemClock_Config(void);
+void TIM_init();
+
+void TIM2_IRQHandler(void) {
+
+  if (TIM2->SR & TIM_SR_CC1IF) {
+    TIM2->SR &= ~(TIM_SR_CC1IF);
+
+    // 1V low
+    DAC_write(DAC_volt_conv(1000));
+  }
+  
+  if (TIM2->SR & TIM_SR_UIF) {
+    TIM2->SR &= ~(TIM_SR_UIF);
+
+    // 2V high
+    DAC_write(DAC_volt_conv(2000));
+  }
+}
+
 
 int main(void) {
   HAL_Init();
   SystemClock_Config();
 
-  // enable spi clock and gpio A clock
-  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOAEN); 
-
+  // enable spi clock, gpio A, C, and TIM2 clocks 
+  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOCEN);
+  RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+  RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN;
+  DAC_init();
+  TIM_init();
+  uint16_t count = 0;
+  // DAC_write(1500);
+  // HAL_Delay(100);
   while (1) {
-
+    // DAC_write(count);
+    // count++;
+    // if (count > 4095) count = 0;
+    // HAL_Delay(2);
   }
 }
 
+
+void TIM_init() {
+  __enable_irq();
+
+  TIM2->PSC = 80000 - 1; // divide 80Mhz clock down
+  TIM2->ARR = 1000 - 1; // arr will fire every 1000 cycles
+  TIM2->CCR1 = 250 - 1; // 25% duty cycle (ccr status sets low, arr sets high)
+
+  NVIC->ISER[0] = (1 << (TIM2_IRQn & 0x1F));
+
+  TIM2->SR &= ~(TIM_SR_CC1IF | TIM_SR_UIF);
+  TIM2->DIER |= TIM_DIER_UIE; // enable
+  TIM2->CR1 |= TIM_CR1_CEN;
+}
 
 void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};

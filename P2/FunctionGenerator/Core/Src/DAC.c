@@ -1,8 +1,9 @@
+#include <stdint.h>
 #include <stm32l4xx_hal.h>
 #include "DAC.h"
 #include "stm32l476xx.h"
 
-#define AF5 5
+
 
 void DAC_init() {
     // Clear pin 4, 5, 6, and 7 
@@ -17,18 +18,28 @@ void DAC_init() {
     GPIOA->MODER &= ~(GPIO_MODER_MODE4 | GPIO_MODER_MODE5 | GPIO_MODER_MODE6 | GPIO_MODER_MODE7);
     GPIOA->MODER |= (GPIO_MODER_MODE4_1 | GPIO_MODER_MODE5_1 | GPIO_MODER_MODE6_1 | GPIO_MODER_MODE7_1);
 
-    // MSB first, output enabled (transmit only), clock idle high, second clock edge for data
-    SPI1->CR1 = (~SPI_CR1_LSBFIRST | SPI_CR1_BIDIOE | SPI_CR1_CPOL | SPI_CR1_CPHA);
+    // 'master' () mode
+    SPI1->CR1 = (SPI_CR1_MSTR | SPI_CR1_BR_0);
     
-    // 12 bit mode, hardware chip sel
-    SPI1->CR2 = ((SPI_CR2_DS_3 | SPI_CR2_DS_2 | SPI_CR2_DS_0) | SPI_CR2_NSSP);
+    // 16 bit mode, hardware chip sel
+    SPI1->CR2 = ((SPI_CR2_DS_3 | SPI_CR2_DS_2 | SPI_CR2_DS_1 | SPI_CR2_DS_0) | SPI_CR2_NSSP | SPI_CR2_SSOE);
 
     // enable spi peripheral
     SPI1->CR1 |= (SPI_CR1_SPE);
 }
 
 
-void DAC_write(uint16_t voltage) {
-    if (voltage >= 4096) voltage = 4095;
+void DAC_write(uint16_t value) {
+    if (value >= DAC_MAX) value = (DAC_MAX - 1);
 
+    uint16_t output = DAC_HEADER | value;
+    // Don't write to data register while spi tx is busy
+    while (!(SPI1->SR & SPI_SR_TXE)) {};
+    SPI1->DR = output; // output spi
+}
+
+
+uint16_t DAC_volt_conv(uint16_t voltage) {
+    if (voltage > VOLT_MAX) voltage = VOLT_MAX;
+    return (voltage * DAC_MAX) / VOLT_MAX;
 }
