@@ -7,19 +7,21 @@
 void SystemClock_Config(void);
 void TIM_init();
 
+uint16_t max = 1000;
+
 void TIM2_IRQHandler(void) {
 
   if (TIM2->SR & TIM_SR_CC1IF) {
     TIM2->SR &= ~(TIM_SR_CC1IF);
 
     // 1V low
-    DAC_write(DAC_volt_conv(1000));
+    DAC_write(DAC_volt_conv(0));
   }
   
   if (TIM2->SR & TIM_SR_UIF) {
     TIM2->SR &= ~(TIM_SR_UIF);
     // 2V high
-    DAC_write(DAC_volt_conv(2000));
+    DAC_write(DAC_volt_conv(max));
   }
 }
 
@@ -35,9 +37,22 @@ int main(void) {
   DAC_init();
   TIM_init();
   KEYPAD_GPIO_Init();
-  uint16_t count = 0;
 
-  while (1) {}
+  while (1) {
+    char read = read_keypad();
+    HAL_Delay(10);
+    if (read == read_keypad()) {
+
+      if (read == '1') {
+        max = 1000;
+      } else if (read == '2') {
+        max = 2000;
+      } else if (read == '3') {
+        max = 3000;
+      }
+
+    }
+  }
 }
 
 

@@ -18,7 +18,7 @@ void DAC_init() {
     GPIOA->MODER &= ~(GPIO_MODER_MODE4 | GPIO_MODER_MODE5 | GPIO_MODER_MODE6 | GPIO_MODER_MODE7);
     GPIOA->MODER |= (GPIO_MODER_MODE4_1 | GPIO_MODER_MODE5_1 | GPIO_MODER_MODE6_1 | GPIO_MODER_MODE7_1);
 
-    // 'master' () mode
+    // 'master' () mode, divide clock by 4 (80Mhz / 4 = 20Mhz)
     SPI1->CR1 = (SPI_CR1_MSTR | SPI_CR1_BR_0);
     
     // 16 bit mode, hardware chip sel
