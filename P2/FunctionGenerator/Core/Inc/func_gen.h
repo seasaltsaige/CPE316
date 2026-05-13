@@ -3,38 +3,85 @@
 
 #include <stdint.h>
 
-enum WAVE_FREQ {
-    ONE,
-    TWO,
-    THREE,
-    FOUR,
-    FIVE
-} WAVE_FREQ;
+// Defines the frequency at which the interrupts should be generated.
+// For all but the square wave, this behaves more or less the same
+// For the square wave, we can just use the CCR1 and ARR to create a duty cycled wave
+// All others can use
+// ARR or CCR1 = fclk / (freq * step_count)
+// as the reset and general handling is handled by the func_gen
+// not the ARR for resetting the dac output
+enum WAVE_FREQ : uint16_t  {
+    ONE = 100,
+    TWO = 200,
+    THREE = 300,
+    FOUR = 400,
+    FIVE = 500
+};
 
-
-enum WAVE_TYPE {
+// Simple enum to handle 
+// for saw, triangle, and sin,
+// the ARR will be used to generate the interrupt
+// at which the step is increased/set to the next value
+// the CCR can be used instead, but the ARR just makes more sense
+enum WAVE_TYPE : uint8_t  {
     SQUARE,
     SAW,
     TRIANGLE,
     SIN,
-} WAVE_TYPE;
+};
 
-#define STEPS_PER_PERIOD_MAX 60
+// Only applies to the square wave
+// Used for selecting duty cycle value in CCR1 and ARR
+enum SQUARE_DUTY : uint8_t {
+    TEN = 10,
+    TWENTY = 20,
+    THIRTY = 30,
+    FOURTY = 40,
+    FIFTY = 50,
+    SIXTY = 60,
+    SEVENTY = 70,
+    EIGHTY = 80,
+    NINETY = 90, 
+}
 
+// TODO: redo this logic
+// // Got this through some ... hard thought
+// // Given the 80MHz clock, and a settling time of 4.5us on the dac,
+// // f = 1/4.5us ~= 222.222k samps
+// // steps = 222,222 / 500 ~= 444 theoretical max step count
+// // Even though this is the theoretical max, this does not account
+// // for hold times, or anything else in the CPU
+// // there is plenty of overhead, so going with something fairly
+// // under 444 is acceptable, which is how i landed on 300
+#define STEPS_PER_PERIOD_MAX 1000
+
+// Keep track of the current state
 extern enum WAVE_FREQ wave_freq;
 extern enum WAVE_TYPE wave_type;
-
-extern uint16_t dac_output;
+extern enum SQUARE_DUTY duty_cycle;
+extern uint16_t dac_output_mv;
 extern uint16_t step_count;
 
-extern const uint16_t SIN_LUT[1000];
+// Lookup table used for the SINE wave
+extern const uint16_t SIN_LUT[STEPS_PER_PERIOD_MAX];
 
-// void step_output();
+void FUNC_init();
+
+// Used in the interrupt routine to step the output,
+// Square waves are a special case and handled independently
+void step_output();
+
+void configure_square();
+void configure_other();
 
 void square();
 void step_saw();
 void step_triangle();
 void step_sin();
+
+void set_wave(enum WAVE_TYPE wave);
+void set_duty(enum SQUARE_DUTY duty);
+void set_freq(enum WAVE_FREQ freq);
 
 
 #endif

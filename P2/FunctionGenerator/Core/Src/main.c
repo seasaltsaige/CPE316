@@ -1,4 +1,5 @@
 #include "main.h"
+#include "func_gen.h"
 #include "keypad.h"
 #include "stm32l476xx.h"
 #include "DAC.h"
@@ -43,14 +44,28 @@ int main(void) {
     HAL_Delay(10);
     if (read == read_keypad()) {
 
-      if (read == '1') {
-        max = 1000;
-      } else if (read == '2') {
-        max = 2000;
-      } else if (read == '3') {
-        max = 3000;
-      }
+      // -- begin frequency handling --
+      if (read == '1') set_freq(ONE);
+      else if (read == '2') set_freq(TWO);
+      else if (read == '3') set_freq(THREE);
+      else if (read == '4') set_freq(FOUR);
+      else if (read == '5') set_freq(FIVE);
+      // -- end frequency handling --
 
+      // -- begin wave type handling --
+      else if (read == '6') set_wave(SIN);
+      else if (read == '7') set_wave(TRIANGLE);
+      else if (read == '8') set_wave(SAW);
+      else if (read == '9') set_wave(SQUARE);
+      // -- end wave type handling --
+
+      // -- begin square wave duty cycle handling --
+      else if (read == '0') set_duty(FIFTY);
+      else if (read == '*' && duty_cycle != TEN) set_duty((SQUARE_DUTY)(duty_cycle - 10));
+      else if (read == '#' && duty_cycle != NINETY) set_duty((SQUARE_DUTY)(duty_cycle + 10));
+      // -- end square wave duty cycle handling --
+
+      while (read_keypad() == read) {} // dont continue until button is released
     }
   }
 }
@@ -58,15 +73,8 @@ int main(void) {
 
 void TIM_init() {
   __enable_irq();
-
-  TIM2->ARR = 80000 - 1; // arr will fire every 1000 cycles
-  TIM2->CCR1 = 20000 - 1; // 25% duty cycle (ccr status sets low, arr sets high)
-
-  NVIC->ISER[0] = (1 << (TIM2_IRQn & 0x1F));
-
-  TIM2->SR &= ~(TIM_SR_CC1IF);
-  TIM2->DIER |= (TIM_DIER_UIE | TIM_DIER_CC1IE); // enable
-  TIM2->CR1 |= TIM_CR1_CEN;
+  NVIC->ISER[0] = (1 << (TIM2_IRQn));
+  TIM2->SR &= ~(TIM_SR_CC1IF | TIM_SR_UIF);
 }
 
 void SystemClock_Config(void) {
