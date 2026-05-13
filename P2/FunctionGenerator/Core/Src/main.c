@@ -38,6 +38,7 @@ int main(void) {
   DAC_init();
   TIM_init();
   KEYPAD_GPIO_Init();
+  FUNC_init();
 
   while (1) {
     char read = read_keypad();
