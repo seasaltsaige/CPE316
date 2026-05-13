@@ -31,7 +31,7 @@ int main(void) {
   SystemClock_Config();
 
   // enable spi clock, gpio A, C, and TIM2 clocks 
-  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOCEN);
+  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOCEN);
   RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
   RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN;
   DAC_init();

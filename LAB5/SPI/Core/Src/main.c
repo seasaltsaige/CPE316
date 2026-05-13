@@ -1,34 +1,65 @@
 #include "main.h"
-
-
+#include "keypad.h"
+#include "stm32l476xx.h"
+#include "DAC.h"
+#include "stm32l4xx_hal.h"
+#include <stdint.h>
 void SystemClock_Config(void);
+void TIM_init();
 
-int main(void)
-{
+void TIM2_IRQHandler(void) {
 
-  HAL_Init();
-  SystemClock_Config();
+  if (TIM2->SR & TIM_SR_CC1IF) {
+    TIM2->SR &= ~(TIM_SR_CC1IF);
 
-  while (1)
-  {
+    // 1V low
+    DAC_write(DAC_volt_conv(1000));
+  }
+  
+  if (TIM2->SR & TIM_SR_UIF) {
+    TIM2->SR &= ~(TIM_SR_UIF);
+    // 2V high
+    DAC_write(DAC_volt_conv(2000));
   }
 }
 
-void SystemClock_Config(void)
-{
+
+int main(void) {
+  HAL_Init();
+  SystemClock_Config();
+
+  // enable spi clock, gpio A, and TIM2 clocks 
+  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN);
+  RCC->APB2ENR |= RCC_APB2ENR_SPI1EN;
+  RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN;
+  DAC_init();
+  TIM_init();
+
+  for (;;);
+}
+
+
+void TIM_init() {
+  __enable_irq();
+
+  TIM2->ARR = 80000 - 1; // 80MHz / 80,000 = 1,000
+  TIM2->CCR1 = 20000 - 1; // 25% duty cycle (ccr status sets low, arr sets high)
+
+  NVIC->ISER[0] = (1 << (TIM2_IRQn & 0x1F));
+
+  TIM2->SR &= ~(TIM_SR_CC1IF);
+  TIM2->DIER |= (TIM_DIER_UIE | TIM_DIER_CC1IE); // enable
+  TIM2->CR1 |= TIM_CR1_CEN; // enable
+}
+
+void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
-  /** Configure the main internal regulator output voltage
-  */
-  if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK)
-  {
+  if (HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1) != HAL_OK) {
     Error_Handler();
   }
 
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
@@ -39,35 +70,28 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
     Error_Handler();
   }
 
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK |
+                                RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
-  {
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK) {
     Error_Handler();
   }
 }
 
-void Error_Handler(void)
-{
+void Error_Handler(void) {
   __disable_irq();
-  while (1)
-  {
+  while (1) {
   }
 }
 #ifdef USE_FULL_ASSERT
-void assert_failed(uint8_t *file, uint32_t line)
-{
-}
-#endif
+
+void assert_failed(uint8_t *file, uint32_t line) {}
+#endif /* USE_FULL_ASSERT */
