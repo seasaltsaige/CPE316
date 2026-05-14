@@ -10,7 +10,6 @@ void SystemClock_Config(void);
 void TIM_init();
 
 void TIM2_IRQHandler(void) {
-
   // CCR1 should in theory only fire if square wave is selected
   // and configured, but adding a wave_type check as a gaurd to 
   // make sure
@@ -24,7 +23,7 @@ void TIM2_IRQHandler(void) {
     // If we have a square wave, we know CCR1 is firing, so 
     // we can just simply set voltage to 3.3v on UIF
     if (wave_type == SQUARE)
-      DAC_write(DAC_volt_conv(3300));
+      DAC_write(DAC_volt_conv(VOLT_MAX));
     // Otherwise, we can rely on the function generator
     // to step and output to the DAC
     else step_output();
