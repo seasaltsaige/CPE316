@@ -60,9 +60,9 @@ extern enum WAVE_FREQ wave_freq;
 extern enum WAVE_TYPE wave_type;
 extern enum SQUARE_DUTY duty_cycle;
 
-extern uint16_t dac_output_mv;
-extern uint16_t step_count;
-extern uint8_t triange_increasing;
+extern volatile uint16_t dac_output_mv;
+extern volatile uint16_t step_count;
+extern volatile uint8_t triangle_increasing;
 
 // Lookup table used for the SINE wave
 extern const uint16_t SIN_LUT[STEPS_PER_PERIOD_MAX];

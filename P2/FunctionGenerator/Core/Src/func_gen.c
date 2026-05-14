@@ -7,11 +7,11 @@ enum WAVE_FREQ wave_freq = ONE;
 enum WAVE_TYPE wave_type = SQUARE;
 enum SQUARE_DUTY duty_cycle = FIFTY;
 
-uint16_t dac_output_mv = 0;
-uint16_t step_count = 0;
+volatile uint16_t dac_output_mv = 0;
+volatile uint16_t step_count = 0;
 // Triangle wave will start as increasing,
 // then switch to decreasing (0)
-uint8_t triange_increasing = 1;
+volatile uint8_t triangle_increasing = 1;
 
 
 // dont look at this
@@ -118,10 +118,10 @@ void step_triangle() {
 
     uint16_t output_step = (VOLT_MAX / (STEPS_PER_PERIOD_MAX / (wave_freq / 100))) / 2;
     // If in the increasing half, increase output voltage
-    if (triange_increasing) {
+    if (triangle_increasing) {
         dac_output_mv += output_step;
         if (dac_output_mv > VOLT_MAX) {
-            triange_increasing = 0;
+            triangle_increasing = 0;
             dac_output_mv = (VOLT_MAX - output_step);
         }
     } else {
@@ -130,7 +130,7 @@ void step_triangle() {
         // larger than VOLT_MAX, so we can switch back to increasing
         dac_output_mv -= output_step;
         if (dac_output_mv > VOLT_MAX) {
-            triange_increasing = 1;
+            triangle_increasing = 1;
             dac_output_mv = output_step;
         }
     }
@@ -156,7 +156,7 @@ void configure_square() {
     // and cause issues
     step_count = 0;
     dac_output_mv = 0;
-    triange_increasing = 1;
+    triangle_increasing = 1;
     
     // Re-enable in interrupt enable reg
     TIM2->DIER |= (TIM_DIER_CC1IE | TIM_DIER_UIE);
@@ -171,10 +171,10 @@ void configure_other() {
     // Reset counter to ensure normal behavior on restart
     TIM2->CNT = 0;
 
-    uint16_t step_count = (STEPS_PER_PERIOD_MAX / (wave_freq / 100));
+    uint16_t step_cnt = (STEPS_PER_PERIOD_MAX / (wave_freq / 100));
 
     // (80MHz / freq*step_count) - 1 ;  yields ARR value
-    TIM2->ARR = (80000000 / (wave_freq * step_count)) - 1;
+    TIM2->ARR = (80000000 / (wave_freq * step_cnt)) - 1;
     // No CCR for wave types that are not square waves
 
     // Clear interrupt flags
@@ -184,7 +184,7 @@ void configure_other() {
     // and cause issues
     step_count = 0;
     dac_output_mv = 0;
-    triange_increasing = 1;
+    triangle_increasing = 1;
 
     // Re-enable in interrupt enable reg
     TIM2->DIER |= (TIM_DIER_UIE);
@@ -209,6 +209,8 @@ void set_wave(enum WAVE_TYPE wave) {
 
 void set_freq(enum WAVE_FREQ freq) {
     wave_freq = freq;
+    if (wave_type == SQUARE) configure_square();
+    else configure_other();
 }
 
 void set_duty(enum SQUARE_DUTY duty) {
