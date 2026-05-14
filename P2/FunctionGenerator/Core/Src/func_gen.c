@@ -111,7 +111,7 @@ void configure_square() {
     // (80MHz / freq) - 1 ;  yields ARR value
     TIM2->ARR = (80000000 / wave_freq) - 1;
     // Duty cycle setup
-    TIM2->CCR1 = ((TIM2->ARR + 1) * duty_cycle) / 100;
+    TIM2->CCR1 = (((TIM2->ARR + 1) * duty_cycle) / 100) - 1;
 
     // Clear interrupt flags
     TIM2->SR &= ~(TIM_SR_UIF | TIM_SR_CC1IF);
