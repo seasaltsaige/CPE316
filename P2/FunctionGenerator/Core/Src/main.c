@@ -72,8 +72,8 @@ int main(void) {
 
       // -- begin square wave duty cycle handling --
       else if (read == '0') set_duty(FIFTY);
-      else if (read == '*' && duty_cycle != TEN) set_duty((SQUARE_DUTY)(duty_cycle - 10));
-      else if (read == '#' && duty_cycle != NINETY) set_duty((SQUARE_DUTY)(duty_cycle + 10));
+      else if (read == '*' && duty_cycle > 10) set_duty(duty_cycle - 10);
+      else if (read == '#' && duty_cycle < 90) set_duty(duty_cycle + 10);
       // -- end square wave duty cycle handling --
 
       while (read_keypad() == read) {} // dont continue until button is released

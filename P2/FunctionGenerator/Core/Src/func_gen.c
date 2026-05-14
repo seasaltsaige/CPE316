@@ -54,7 +54,7 @@ const uint16_t SIN_LUT[STEPS_PER_PERIOD_MAX] = {
     987, 1024, 1061, 1099, 1137, 1176, 1215, 1254, 1294, 1334, 
     1374, 1415, 1456, 1497, 1538, 1580, 1622, 1664, 1706, 1748, 
     1791, 1833, 1876, 1919, 1962, 2005
-}
+};
 
 
 void FUNC_init() {
@@ -155,7 +155,7 @@ void configure_square() {
     // Reset output stuff while timer is disabled so steps/output dont happen
     // and cause issues
     step_count = 0;
-    dac_output = 0;
+    dac_output_mv = 0;
     triange_increasing = 1;
     
     // Re-enable in interrupt enable reg
@@ -183,7 +183,7 @@ void configure_other() {
     // Reset output stuff while timer is disabled so steps/output dont happen
     // and cause issues
     step_count = 0;
-    dac_output = 0;
+    dac_output_mv = 0;
     triange_increasing = 1;
 
     // Re-enable in interrupt enable reg
@@ -215,6 +215,7 @@ void set_duty(enum SQUARE_DUTY duty) {
     // Not NECESSARY, but if it isn't a square wave, 
     // duty cycle does nothing, so just return
     if (wave_type != SQUARE) return;
-
     duty_cycle = duty;
+
+    configure_square();
 }

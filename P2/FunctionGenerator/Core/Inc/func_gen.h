@@ -42,7 +42,7 @@ enum SQUARE_DUTY : uint8_t {
     SEVENTY = 70,
     EIGHTY = 80,
     NINETY = 90, 
-}
+};
 
 // TODO: redo this logic
 // // Got this through some ... hard thought
