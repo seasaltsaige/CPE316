@@ -7,7 +7,7 @@ enum WAVE_FREQ wave_freq = ONE;
 enum WAVE_TYPE wave_type = SQUARE;
 enum SQUARE_DUTY duty_cycle = FIFTY;
 
-uint16_t dac_output = 0;
+uint16_t dac_output_mv = 0;
 uint16_t step_count = 0;
 // Triangle wave will start as increasing,
 // then switch to decreasing (0)
@@ -81,7 +81,13 @@ void step_output() {
 // meaning, say, for 100Hz, 3300 / (1000 / (100 / 100)) = 3300 / 1000
 // for 500Hz, 3300 / (1000 / (500 / 100)) = 3300 / 200
 void step_saw() {
-
+    // If output went over 3.3v, reset to 0v
+    if (dac_output_mv > VOLT_MAX) dac_output_mv = 0;
+    // Write current dac output value
+    DAC_write(DAC_volt_conv(dac_output_mv));
+    // Calculate amount to step by
+    uint16_t output_step = (VOLT_MAX / (STEPS_PER_PERIOD_MAX / (wave_freq / 100)));
+    dac_output_mv += output_step;
 }
 
 void step_sin() {
@@ -102,8 +108,32 @@ void step_sin() {
     step_count += step_size;
 }
 
+// Triangle is similar to saw,
+// except the step size will be exactly half that of the saw step
+// since it needs to increase to 3.3v, then back down to 0v.
+// This gives: (3300 / (STEPS_PER_PERIOD_MAX / (wave_freq / 100))) / 2
 void step_triangle() {
 
+    DAC_write(DAC_volt_conv(dac_output_mv));
+
+    uint16_t output_step = (VOLT_MAX / (STEPS_PER_PERIOD_MAX / (wave_freq / 100))) / 2;
+    // If in the increasing half, increase output voltage
+    if (triange_increasing) {
+        dac_output_mv += output_step;
+        if (dac_output_mv > VOLT_MAX) {
+            triange_increasing = 0;
+            dac_output_mv = (VOLT_MAX - output_step);
+        }
+    } else {
+        // Slightly weird, but since dac_output_mv is a uint16_t,
+        // once the voltage drops below 0, we will get a number (much)
+        // larger than VOLT_MAX, so we can switch back to increasing
+        dac_output_mv -= output_step;
+        if (dac_output_mv > VOLT_MAX) {
+            triange_increasing = 1;
+            dac_output_mv = output_step;
+        }
+    }
 }
 
 // Configures the ARR and 
@@ -122,7 +152,11 @@ void configure_square() {
     // Clear interrupt flags
     TIM2->SR &= ~(TIM_SR_UIF | TIM_SR_CC1IF);
 
+    // Reset output stuff while timer is disabled so steps/output dont happen
+    // and cause issues
     step_count = 0;
+    dac_output = 0;
+    triange_increasing = 1;
     
     // Re-enable in interrupt enable reg
     TIM2->DIER |= (TIM_DIER_CC1IE | TIM_DIER_UIE);
@@ -146,7 +180,11 @@ void configure_other() {
     // Clear interrupt flags
     TIM2->SR &= ~(TIM_SR_UIF);
 
+    // Reset output stuff while timer is disabled so steps/output dont happen
+    // and cause issues
     step_count = 0;
+    dac_output = 0;
+    triange_increasing = 1;
 
     // Re-enable in interrupt enable reg
     TIM2->DIER |= (TIM_DIER_UIE);

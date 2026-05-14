@@ -60,7 +60,7 @@ extern enum WAVE_FREQ wave_freq;
 extern enum WAVE_TYPE wave_type;
 extern enum SQUARE_DUTY duty_cycle;
 
-extern uint16_t dac_output;
+extern uint16_t dac_output_mv;
 extern uint16_t step_count;
 extern uint8_t triange_increasing;
 
