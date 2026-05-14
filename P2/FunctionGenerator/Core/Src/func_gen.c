@@ -1,10 +1,17 @@
 #include "func_gen.h"
+#include "DAC.h"
 #include "stm32l476xx.h"
 #include <stdint.h>
 
 enum WAVE_FREQ wave_freq = ONE;
 enum WAVE_TYPE wave_type = SQUARE;
 enum SQUARE_DUTY duty_cycle = FIFTY;
+
+uint16_t dac_output = 0;
+uint16_t step_count = 0;
+// Triangle wave will start as increasing,
+// then switch to decreasing (0)
+uint8_t triange_increasing = 1;
 
 
 // dont look at this
@@ -54,24 +61,45 @@ void FUNC_init() {
     set_freq(ONE);
     set_wave(SQUARE);
     set_duty(FIFTY);
+    step_count = 0;
     configure_square();
 }
 
 
 void step_output() {
+    // Extra gaurd clause just to make sure nothing weird happens
+    if (wave_type == SQUARE) return;
 
+    // Otherwise, step based on function type
+    if (wave_type == SAW) step_saw();
+    else if (wave_type == SIN) step_sin();
+    else if (wave_type == TRIANGLE) step_triangle();
 }
 
-void square() {
-
-}
-
+// Saw is simple with a step size of
+// (3300) / (STEPS_PER_PERIOD_MAX / (wave_freq / 100))
+// meaning, say, for 100Hz, 3300 / (1000 / (100 / 100)) = 3300 / 1000
+// for 500Hz, 3300 / (1000 / (500 / 100)) = 3300 / 200
 void step_saw() {
 
 }
 
 void step_sin() {
+    // Check to see if step has overflowed
+    // Since the max period step count is divisible by
+    // 1, 2, 3, 4, and 5, we can simply reset step count to 0
+    // since all (should) overflow to 1000
+    if (step_count >= STEPS_PER_PERIOD_MAX) step_count = 0;
 
+    // Write current LUT position to dac output
+    DAC_write(SIN_LUT[step_count]);
+
+    // Index step size will be based on the frequency
+    // 100Hz will have a step size of 1, and get all 1000 values in one period
+    // 500Hz will have a step size of 5, and get only 200 values in one period
+    uint8_t step_size = wave_freq / 100;
+    // Increment steps for next iteration
+    step_count += step_size;
 }
 
 void step_triangle() {
@@ -94,6 +122,8 @@ void configure_square() {
     // Clear interrupt flags
     TIM2->SR &= ~(TIM_SR_UIF | TIM_SR_CC1IF);
 
+    step_count = 0;
+    
     // Re-enable in interrupt enable reg
     TIM2->DIER |= (TIM_DIER_CC1IE | TIM_DIER_UIE);
     TIM2->CR1 |= TIM_CR1_CEN;
@@ -114,8 +144,10 @@ void configure_other() {
     // No CCR for wave types that are not square waves
 
     // Clear interrupt flags
-    TIM2->SR &= ~(TIM_SR_UIF | TIM_SR_CC1IF);
-    
+    TIM2->SR &= ~(TIM_SR_UIF);
+
+    step_count = 0;
+
     // Re-enable in interrupt enable reg
     TIM2->DIER |= (TIM_DIER_UIE);
     TIM2->CR1 |= TIM_CR1_CEN;
@@ -123,8 +155,6 @@ void configure_other() {
 
 
 void set_wave(enum WAVE_TYPE wave) {
-    // TODO: Also configure ARR/CCR1 here
-    // utilize configure_square above and make more helper fns
     switch (wave) {
         case SIN:
         case SAW:
@@ -135,6 +165,7 @@ void set_wave(enum WAVE_TYPE wave) {
             configure_square();
             break;
     }
+
     wave_type = wave;
 }
 

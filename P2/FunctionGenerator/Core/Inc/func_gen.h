@@ -59,8 +59,10 @@ enum SQUARE_DUTY : uint8_t {
 extern enum WAVE_FREQ wave_freq;
 extern enum WAVE_TYPE wave_type;
 extern enum SQUARE_DUTY duty_cycle;
-extern uint16_t dac_output_mv;
+
+extern uint16_t dac_output;
 extern uint16_t step_count;
+extern uint8_t triange_increasing;
 
 // Lookup table used for the SINE wave
 extern const uint16_t SIN_LUT[STEPS_PER_PERIOD_MAX];
@@ -74,7 +76,6 @@ void step_output();
 void configure_square();
 void configure_other();
 
-void square();
 void step_saw();
 void step_triangle();
 void step_sin();
