@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"G:/projects/CPE316/P3/StewartPlatform/build/Release/cmake_install.cmake",
+		"G:/projects/CPE316/P3/StewartPlatform/build/Release/cmake/stm32cubemx/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
