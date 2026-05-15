@@ -41,5 +41,5 @@ void DAC_write(uint16_t value) {
 
 uint16_t DAC_volt_conv(uint16_t voltage) {
     if (voltage > VOLT_MAX) voltage = VOLT_MAX;
-    return (voltage * DAC_MAX) / VOLT_MAX;
+    return (voltage * DAC_MAX) / 3300;
 }

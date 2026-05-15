@@ -44,15 +44,13 @@ enum SQUARE_DUTY : uint8_t {
     NINETY = 90, 
 };
 
-// TODO: redo this logic
-// // Got this through some ... hard thought
-// // Given the 80MHz clock, and a settling time of 4.5us on the dac,
-// // f = 1/4.5us ~= 222.222k samps
-// // steps = 222,222 / 500 ~= 444 theoretical max step count
-// // Even though this is the theoretical max, this does not account
-// // for hold times, or anything else in the CPU
-// // there is plenty of overhead, so going with something fairly
-// // under 444 is acceptable, which is how i landed on 300
+// Got this through some ... hard thought
+// Given the 80MHz clock, and a settling time of 4.5us on the dac,
+// f = 1/4.5us ~= 222.222k samps
+// 222,000Hz / 100Hz = 2220 theoretical max sample speed, though this
+// wont really give the dac time to settle, and hold the output.
+// Went with 1000 samples per period (at 100Hz) to give plenty of room
+// for error
 #define STEPS_PER_PERIOD_MAX 1000
 
 // Keep track of the current state
