@@ -15,8 +15,46 @@
   ******************************************************************************
   */
 #include "main.h"
+#include "stewart_controller.h"
+#include "stm32l476xx.h"
+#include <stdint.h>
 
 void SystemClock_Config(void);
+
+void TIM6_DAC_IRQHandler() {
+  if (TIM6->SR & TIM_SR_UIF) {
+    TIM6->SR &= ~(TIM_SR_UIF);
+    for (int i = 0; i < 6; i++) {
+      if (!motors[i].running) continue;
+      stepper_accel(&motors[i]);
+    }
+  }
+}
+
+void TIM1_UP_TIM16_IRQHandler() {
+  if (TIM1->SR & TIM_SR_UIF) {
+    TIM1->SR &= ~(TIM_SR_UIF);
+    stepper_tick(&motors[0]);
+  }
+}
+
+void TIM2_IRQHandler() {
+
+}
+
+void TIM3_IRQHandler() {
+
+}
+
+void TIM4_IRQHandler() {
+
+}
+
+void TIM5_IRQHandler() {
+
+}
+
+
 
 int main(void)
 {
@@ -24,9 +62,20 @@ int main(void)
   HAL_Init();
   SystemClock_Config();
 
+  STEWART_init();
+
+  uint32_t test_dist_mm = 300;
+  uint32_t test_dist_steps = (test_dist_mm / MM_PER_REV) * STEPS_PER_REV;
+  uint32_t v_test_mm_s = (test_dist_mm * 3) / (2 * (MOVE_TIME_MS / 1000));
+  uint32_t a_test_mm_s2 = (v_test_mm_s * 3) / (MOVE_TIME_MS / 1000);
+  uint32_t a_test_steps_s2 = ((a_test_mm_s2 / MM_PER_REV) * (STEPS_PER_REV)) / (3 * MOVE_TIME_MS);
+
+
+  stepper_move(&motors[0], test_dist_steps, 44, 10000, a_test_steps_s2);
+
   while (1)
   {
-
+    
   }
 }
 
