@@ -25,7 +25,10 @@ void TIM6_DAC_IRQHandler() {
   if (TIM6->SR & TIM_SR_UIF) {
     TIM6->SR &= ~(TIM_SR_UIF);
     for (int i = 0; i < 6; i++) {
-      if (!motors[i].running) continue;
+      // if the motor is either not running
+      // homing, or extending (finding max extension)
+      // we don't need to accelerate
+      if (!motors[i].running || motors[i].homing || motors[i].extending) continue;
       stepper_accel(&motors[i]);
     }
   }
@@ -38,23 +41,113 @@ void TIM1_UP_TIM16_IRQHandler() {
   }
 }
 
-void TIM2_IRQHandler() {
 
+// GPIO interrupt vectors
+
+// TODO: might want to mask interrupt on hit, then unmask after some debounce
+void EXTI1_IRQHandler() {
+  if (EXTI->PR1 & EXTI_PR1_PIF1) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF1);
+    // HOME_PIN_C1 LIMIT SWITCH ACTIVE
+
+    // Do stuff
+  }
 }
 
-void TIM3_IRQHandler() {
-
+void EXTI2_IRQHandler() {
+  if (EXTI->PR1 & EXTI_PR1_PIF2) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF2);
+    // HOME_PIN_C2 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
 }
 
-void TIM4_IRQHandler() {
-
+void EXTI3_IRQHandler() {
+  if (EXTI->PR1 & EXTI_PR1_PIF3) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF3);
+    // LIMIT_PIN_C2 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
 }
 
-void TIM5_IRQHandler() {
-
+void EXTI4_IRQHandler() {
+  if (EXTI->PR1 & EXTI_PR1_PIF4) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF4);
+    // HOME_PIN_A1 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
 }
 
+void EXTI9_5_IRQHandler() {
+  if (EXTI->PR1 & EXTI_PR1_PIF5) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF5);
+    // LIMIT_PIN_A1 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
 
+  if (EXTI->PR1 & EXTI_PR1_PIF6) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF6);
+    // HOME_PIN_A2 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
+
+  if (EXTI->PR1 & EXTI_PR1_PIF7) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF7);
+    // LIMIT_PIN_A2 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
+
+  if (EXTI->PR1 & EXTI_PR1_PIF9) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF9);
+    // LIMIT_PIN_C1 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
+}
+
+void EXTI15_10_IRQHandler() {
+  if (EXTI->PR1 & EXTI_PR1_PIF10) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF10);
+    // HOME_PIN_B2 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
+
+  if (EXTI->PR1 & EXTI_PR1_PIF11) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF11);
+    // LIMIT_PIN_B2 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
+
+  if (EXTI->PR1 & EXTI_PR1_PIF14) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF14);
+    // HOME_PIN_B1 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
+
+  if (EXTI->PR1 & EXTI_PR1_PIF15) {
+    EXTI->PR1 &= ~(EXTI_PR1_PIF15);
+    // LIMIT_PIN_B1 LIMIT SWITCH ACTIVE
+    // Do stuff
+  }
+}
+// void TIM2_IRQHandler() {
+
+// }
+
+// void TIM3_IRQHandler() {
+
+// }
+
+// void TIM4_IRQHandler() {
+
+// }
+
+// void TIM5_IRQHandler() {
+
+// }
+
+// void TIM8_IRQHandler() {
+
+// }
 
 int main(void)
 {
@@ -64,14 +157,12 @@ int main(void)
 
   STEWART_init();
 
-  uint32_t test_dist_mm = 300;
-  uint32_t test_dist_steps = (test_dist_mm / MM_PER_REV) * STEPS_PER_REV;
-  uint32_t v_test_mm_s = (test_dist_mm * 3) / (2 * (MOVE_TIME_MS / 1000));
-  uint32_t a_test_mm_s2 = (v_test_mm_s * 3) / (MOVE_TIME_MS / 1000);
-  uint32_t a_test_steps_s2 = ((a_test_mm_s2 / MM_PER_REV) * (STEPS_PER_REV)) / (3 * MOVE_TIME_MS);
+  int32_t test_dist_mm = -300;
+  int32_t test_dist_steps = (test_dist_mm * STEPS_PER_REV) / MM_PER_REV;
 
-
-  stepper_move(&motors[0], test_dist_steps, 44, 10000, a_test_steps_s2);
+  stepper_move_const_vel(&motors[0], test_dist_steps, 20);
+  // stepper_move(&motors[0], test_dist_steps, MOVE_TIME_MS);
+  
 
   while (1)
   {
