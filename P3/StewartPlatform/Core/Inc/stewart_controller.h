@@ -5,16 +5,15 @@
 #include "stm32l4xx_hal.h"
 #include <stdint.h>
 
-// --- Motion constants ---
-#define STEPS_PER_REV       200
-#define LEAD_SCREW_LEN_MM   300
-#define MM_PER_REV          2
-#define MOVE_TIME_MS        2000
+#define STEPS_PER_REV        200
+#define LEAD_SCREW_LEN_MM    300
+#define MM_PER_REV           2
+#define MOVE_TIME_MS         2000
 
-// Minimum cruise speed before we fall back to constant-velocity mode.
-// Below this the trapezoidal ramp is too shallow to be useful.
-// 300 steps/s = 1.5 rev/s = 3 mm/s on a 2mm-pitch lead screw.
-#define MIN_CRUISE_STEPS_S  300
+#define HOMING_FAST_MM_S     15
+#define HOMING_SLOW_MM_S     2
+#define HOMING_BACKOFF_STEPS 100
+#define HOMING_LIMIT_HOLD_MS 300
 
 // --- Leg A ---
 #define LEG_A_PORT      GPIOA
@@ -54,44 +53,83 @@
 #define HOME_PIN_C2     (GPIO_PIN_2) // PC2 - EXTI2
 #define LIMIT_PIN_C2    (GPIO_PIN_3) // PC3 - EXTI3
 
+// 2 pins per leg for pwm (2 * 3 = 6)
+// 2 pins per leg for DIR (2 * 3 = 6) 
+// 2 pins per leg for homing (2 * 3 = 6)
+// 2 pins per leg for extension (2 * 3 = 6)
+// 24 gpio total
+
+typedef enum {
+    IDLE, // no motion
+    HOMING_FAST, // retract motors quickly until limit switch is hit
+    HOMING_FAST_LIMIT,
+    HOMING_FAST_LIMIT_TRANSITION,
+    HOMING_FAST_BACKOFF, // extend motors slowly until sure limit switches are not pressed (~4mm)
+    HOMING_FAST_BACKOFF_DONE, // state transition once steps from previous state finish
+    HOMING_FAST_BACKOFF_TRANSITION, 
+    HOMING_SLOW, // retract motors slowwwly until limit switch is hit
+    HOMING_SLOW_LIMIT,
+    HOMING_SLOW_LIMIT_TRANSITION,
+    HOMING_SLOW_BACKOFF, // extend motors slowly until instant limit switch is released
+    HOMING_SLOW_BACKOFF_DONE,
+    HOMING_SLOW_BACKOFF_TRANSITION,
+    // TODO: repeat for extension
+
+
+    EXTENSION_FAST, // retract motors quickly until limit switch is hit
+    EXTENSION_FAST_LIMIT,
+    EXTENSION_FAST_LIMIT_TRANSITION,
+    EXTENSION_FAST_BACKOFF, // extend motors slowly until sure limit switches are not pressed (~4mm)
+    EXTENSION_FAST_BACKOFF_DONE, // state transition once steps from previous state finish
+    EXTENSION_FAST_BACKOFF_TRANSITION, 
+    EXTENSION_SLOW, // retract motors slowwwly until limit switch is hit
+    EXTENSION_SLOW_LIMIT,
+    EXTENSION_SLOW_LIMIT_TRANSITION,
+    EXTENSION_SLOW_BACKOFF, // extend motors slowly until instant limit switch is released
+    EXTENSION_SLOW_BACKOFF_DONE,
+    EXTENSION_SLOW_BACKOFF_TRANSITION,
+
+    NORMAL_RUNNING,
+} MOTOR_STATE;
+
 
 typedef struct {
-    volatile TIM_TypeDef    *timer;
-    volatile uint32_t       *CCR;
-    volatile GPIO_TypeDef   *dir_port;
-    volatile uint16_t        dir_pin;
-    volatile uint16_t        home_pin;
-    volatile uint16_t        limit_pin;
+    volatile TIM_TypeDef *timer;
+    volatile uint32_t *CCR;
+    volatile GPIO_TypeDef *dir_port;
+    volatile uint16_t dir_pin;
+    volatile uint16_t home_pin;
+    volatile uint16_t limit_pin;
+    volatile uint64_t EXTI_home_flag;
+    volatile uint64_t EXTI_limit_flag;
 
-    volatile uint8_t  homing;
-    volatile uint8_t  extending;
-    volatile uint8_t  running;
+    volatile MOTOR_STATE motor_state;
+    volatile uint32_t ticks_ms;
+
+    volatile uint64_t MAX_STEPS; // MAX EXTENSION RANGE FROM HOME 0 = HOME | MAX_STEPS = FULL EXTENSION
+    volatile uint64_t steps_current; // current positioning
 
     // Step counters
-    volatile int32_t  steps_remaining;
-    volatile int32_t  steps_total;
-    volatile int32_t  steps_accel;      // step index at which accel phase ends
-    volatile int32_t  steps_decel;      // step index at which decel phase begins
+    volatile int8_t current_dir;
+    volatile int32_t steps_remaining;
+    volatile int32_t steps_total;
+    volatile int32_t steps_accel;
+    volatile int32_t steps_decel; 
 
-    // ARR (period) profile — all in 1MHz timer ticks (µs)
     volatile uint32_t arr_current;
-    volatile uint32_t arr_fast;         // cruise period (shortest = fastest)
-    volatile uint32_t arr_slow;         // start/end period (longest = slowest)
-    volatile uint32_t arr_step;         // ARR change applied on each step tick
-
-    // Persistent position tracking
-    volatile int32_t  steps_full_travel; // measured at startup via homing
-    volatile int32_t  steps_current;     // tracked from home position
+    volatile uint32_t arr_fast;         
+    volatile uint32_t arr_slow;         
+    volatile uint32_t arr_step;         
 } Stepper_t;
 
 extern Stepper_t motors[6];
 
 void STEWART_init(void);
-void stepper_move_const_vel(Stepper_t *m, int32_t steps, uint32_t vel_mm_s);
+void stepper_move_const_vel(Stepper_t *m, int32_t steps, uint32_t vel_mm_s, MOTOR_STATE type);
 void stepper_move(Stepper_t *m, int32_t steps, uint32_t total_time_ms);
 void stepper_tick(Stepper_t *m);
 void stepper_accel(Stepper_t *m);
 void home_platform(void);
-void home_stepper(Stepper_t *m);
+void stepper_goto_step(Stepper_t *m, uint64_t step_number, uint32_t vel_mm_s);
 
-#endif /* __STEWART_CONTROLLER_H */
+#endif

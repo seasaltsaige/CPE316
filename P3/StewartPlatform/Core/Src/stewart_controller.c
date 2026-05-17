@@ -1,10 +1,11 @@
 #include "stewart_controller.h"
 #include "stm32l476xx.h"
+#include "stm32l4xx_hal.h"
 #include <stdint.h>
 #include <stdio.h>
 
 Stepper_t motors[6] = {
-    { TIM1, &TIM1->CCR1, LEG_A_PORT, DIR_PIN_A1, HOME_PIN_A1, LIMIT_PIN_A1 },
+    { TIM1, &TIM1->CCR1, LEG_A_PORT, DIR_PIN_A1, HOME_PIN_A1, LIMIT_PIN_A1, EXTI_IMR1_IM4, EXTI_IMR1_IM5 },
     { TIM2, &TIM2->CCR1, LEG_A_PORT, DIR_PIN_A2, HOME_PIN_A2, LIMIT_PIN_A2 },
     { TIM3, &TIM3->CCR1, LEG_B_PORT, DIR_PIN_B1, HOME_PIN_B1, LIMIT_PIN_B1 },
     { TIM4, &TIM4->CCR1, LEG_B_PORT, DIR_PIN_B2, HOME_PIN_B2, LIMIT_PIN_B2 },
@@ -82,6 +83,20 @@ void STEWART_init() {
         GPIO_PUPDR_PUPD2_1 | GPIO_PUPDR_PUPD3_1
     );
 
+        // Set all homing/limit pins as input and pulldown
+    GPIOA->MODER &= ~(GPIO_MODER_MODE4 | GPIO_MODER_MODE5 | GPIO_MODER_MODE6 | GPIO_MODER_MODE7 | GPIO_MODER_MODE1 | GPIO_MODER_MODE9);
+    GPIOB->MODER &= ~(GPIO_MODER_MODE14 | GPIO_MODER_MODE15 | GPIO_MODER_MODE10 | GPIO_MODER_MODE11);
+    GPIOC->MODER &= ~(GPIO_MODER_MODE2 | GPIO_MODER_MODE3);
+
+    GPIOA->PUPDR &= ~(GPIO_PUPDR_PUPD4 | GPIO_PUPDR_PUPD5 | GPIO_PUPDR_PUPD6 | GPIO_PUPDR_PUPD7 | GPIO_PUPDR_PUPD1 | GPIO_PUPDR_PUPD9);
+    GPIOA->PUPDR |= (GPIO_PUPDR_PUPD4_1 | GPIO_PUPDR_PUPD5_1 | GPIO_PUPDR_PUPD6_1 | GPIO_PUPDR_PUPD7_1 | GPIO_PUPDR_PUPD1_1 | GPIO_PUPDR_PUPD9_1);
+
+    GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPD14 | GPIO_PUPDR_PUPD15 | GPIO_PUPDR_PUPD10 | GPIO_PUPDR_PUPD11);
+    GPIOB->PUPDR |= (GPIO_PUPDR_PUPD14_1 | GPIO_PUPDR_PUPD15_1 | GPIO_PUPDR_PUPD10_1 | GPIO_PUPDR_PUPD11_1);
+
+    GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPD2 | GPIO_PUPDR_PUPD3);
+    GPIOC->PUPDR |= (GPIO_PUPDR_PUPD2_1 | GPIO_PUPDR_PUPD3_1);
+
     // Configure EXTI interrupts for each channel
 
     // EXTI1, 4, 5, 6, 7, and 9 are mapped to Port A
@@ -139,11 +154,20 @@ void STEWART_init() {
     );
 
     // Disable falling edge trigger (should already be done, but doesnt hurt)
-    EXTI->FTSR1 &= ~(
+    EXTI->FTSR1 |= (
         EXTI_FTSR1_FT1 | EXTI_FTSR1_FT2 | EXTI_FTSR1_FT3 |
         EXTI_FTSR1_FT4 | EXTI_FTSR1_FT5 | EXTI_FTSR1_FT6 |
         EXTI_FTSR1_FT7 | EXTI_FTSR1_FT9 | EXTI_FTSR1_FT10 |
         EXTI_FTSR1_FT11 | EXTI_FTSR1_FT14 | EXTI_FTSR1_FT15
+    );
+
+    EXTI->PR1 = (
+        EXTI_PR1_PIF1  | EXTI_PR1_PIF2  |
+        EXTI_PR1_PIF3  | EXTI_PR1_PIF4  |
+        EXTI_PR1_PIF5  | EXTI_PR1_PIF6  |
+        EXTI_PR1_PIF7  | EXTI_PR1_PIF9  |
+        EXTI_PR1_PIF10 | EXTI_PR1_PIF11 |
+        EXTI_PR1_PIF14 | EXTI_PR1_PIF15
     );
 
     // Reset all DIR pins to low state, just in case
@@ -170,11 +194,10 @@ void STEWART_init() {
     // Set pins into PWM AF2
     LEG_B_PORT->AFR[0] |= (GPIO_AFRL_AFSEL4_1 | GPIO_AFRL_AFSEL6_1);
 
-    LEG_Ca_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL1);
+    LEG_Ca_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL2);
     LEG_Cb_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL6);
-
     // AF2 select
-    LEG_Ca_PORT->AFR[0] |= (GPIO_AFRL_AFSEL1_1);
+    LEG_Ca_PORT->AFR[0] |= (GPIO_AFRL_AFSEL2_1);
     // AF3 select
     LEG_Cb_PORT->AFR[0] |= (GPIO_AFRL_AFSEL6_0 | GPIO_AFRL_AFSEL6_1);
 
@@ -296,25 +319,29 @@ void STEWART_init() {
     // followed by acceleration timer
     // followed by step timers
 
-    // NVIC->IP[TIM1_UP_TIM16_IRQn] = 0x10;
-    // NVIC->IP[TIM2_IRQn] = 0x10;
-    // NVIC->IP[TIM3_IRQn] = 0x10;
-    // NVIC->IP[TIM4_IRQn] = 0x10;
-    // NVIC->IP[TIM5_IRQn] = 0x10;
-    // NVIC->IP[TIM8_UP_IRQn] = 0x10;
-    // NVIC->IP[TIM6_DAC_IRQn] = 0x00;
+    NVIC->IP[TIM1_UP_TIM16_IRQn] = 0xF0;
+    NVIC->IP[TIM2_IRQn] = 0xF0;
+    NVIC->IP[TIM3_IRQn] = 0xF0;
+    NVIC->IP[TIM4_IRQn] = 0xF0;
+    NVIC->IP[TIM5_IRQn] = 0xF0;
+    NVIC->IP[TIM8_UP_IRQn] = 0xF0;
+    NVIC->IP[TIM6_DAC_IRQn] = 0x10;
+    NVIC->IP[EXTI1_IRQn] = 0x00;
+    NVIC->IP[EXTI2_IRQn] = 0x00;
+    NVIC->IP[EXTI3_IRQn] = 0x00;
+    NVIC->IP[EXTI4_IRQn] = 0x00;
+    NVIC->IP[EXTI9_5_IRQn] = 0x00;
+    NVIC->IP[EXTI15_10_IRQn] = 0x00;
+
+
     
     // enable interrupts in the core
     __enable_irq();
 
     // Enable timers! yippee
-    TIM1->CR1 |= TIM_CR1_CEN;
-    // TIM2->CR1 |= TIM_CR1_CEN;
-    // TIM3->CR1 |= TIM_CR1_CEN;
-    // TIM4->CR1 |= TIM_CR1_CEN;
-    // TIM5->CR1 |= TIM_CR1_CEN;
-    // TIM8->CR1 |= TIM_CR1_CEN;
 
+    GPIOA->MODER &= ~(GPIO_MODER_MODE3);
+    GPIOA->MODER |= (GPIO_MODER_MODE3_0);
 
     TIM6->CR1 |= TIM_CR1_CEN;
 }
@@ -348,7 +375,7 @@ void stepper_move(Stepper_t *m, int32_t steps, uint32_t total_time_ms) {
         m->arr_current     = arr_flat;
         m->arr_fast        = arr_flat;
         m->arr_slow        = arr_flat;
-        m->running         = 1;
+        m->motor_state     = NORMAL_RUNNING;
 
         m->timer->ARR = arr_flat;
         *(m->CCR)     = arr_flat / 2;
@@ -357,15 +384,12 @@ void stepper_move(Stepper_t *m, int32_t steps, uint32_t total_time_ms) {
         return;
     }
 
-    // At start/end of ramp, velocity = 0 — but we need a practical slow speed
-    // Use 10% of cruise speed as the starting speed
     uint32_t arr_slow = arr_cruise * 10;
     if (arr_slow > 0xFFFF) arr_slow = 0xFFFF;  // clamp to timer max
 
-    // Phase boundaries by step count
-    // accel: first 1/4 of steps, cruise: middle 1/2, decel: last 1/4
+  
     m->steps_accel  = steps / 4;
-    m->steps_decel  = steps - (steps / 4);  // decel starts here
+    m->steps_decel  = steps - (steps / 4);
 
     uint32_t accel_ticks = total_time_ms / 3;
     if (accel_ticks == 0) accel_ticks = 1;
@@ -377,7 +401,7 @@ void stepper_move(Stepper_t *m, int32_t steps, uint32_t total_time_ms) {
     m->arr_current     = arr_slow;
     m->arr_fast        = arr_cruise;
     m->arr_slow        = arr_slow;
-    m->running         = 1;
+    m->motor_state     = NORMAL_RUNNING;
 
     m->timer->ARR = arr_slow;
     *(m->CCR)     = arr_slow / 2;
@@ -387,20 +411,31 @@ void stepper_move(Stepper_t *m, int32_t steps, uint32_t total_time_ms) {
 
 
 void stepper_tick(Stepper_t *m) {
-    if (!m->running) return;
-
+    if (m->motor_state == IDLE) return;
     m->steps_remaining--;
+
+    m->steps_current += m->current_dir;
 
     if (m->steps_remaining <= 0) {
         *(m->CCR) = 0;
-        m->running = 0;
+        m->timer->CR1 &= ~(TIM_CR1_CEN);
+
+        if (m->motor_state == HOMING_FAST_BACKOFF)
+            m->motor_state = HOMING_FAST_BACKOFF_DONE;
+
+        else if (m->motor_state == EXTENSION_FAST_BACKOFF)
+            m->motor_state = EXTENSION_FAST_BACKOFF_DONE;
+
+        // else m->motor_state = IDLE;
+        
+
         return;
     }
 
 }
 
 void stepper_accel(Stepper_t *m) {
-    if (!m->running) return;
+    if (m->motor_state != NORMAL_RUNNING) return;
 
     int32_t steps_done = m->steps_total - m->steps_remaining;
 
@@ -427,11 +462,66 @@ void stepper_accel(Stepper_t *m) {
 
 
 void home_platform() {
+    const uint8_t NUM_MOTORS = 1; 
+    // Loop through motors
+    // todo: add rest of motors
+    for (int i = 0; i < NUM_MOTORS; i++) {
+        // move down at 20mm/s
+        // begin in homing fast state
+        stepper_move_const_vel(&motors[i], -99999, HOMING_FAST_MM_S, HOMING_FAST);
+    }
+
+    // while all motors have not re-entered idle
+    while (
+        motors[0].motor_state != IDLE && motors[0].motor_state != NORMAL_RUNNING 
+
+    ) {
+        for (int i = 0; i < NUM_MOTORS; i++) {
+            switch (motors[i].motor_state) {
+
+                case HOMING_FAST_LIMIT_TRANSITION:
+                    stepper_move_const_vel(&motors[i], HOMING_BACKOFF_STEPS, HOMING_SLOW_MM_S, HOMING_FAST_BACKOFF);
+                    break;
+                case HOMING_FAST_BACKOFF_TRANSITION:
+                    stepper_move_const_vel(&motors[i], -99999, HOMING_SLOW_MM_S, HOMING_SLOW);
+                    break;
+                case HOMING_SLOW_LIMIT_TRANSITION:
+                    // arbitrary step count. halted once limit switch is cleared
+                    stepper_move_const_vel(&motors[i], 99999, HOMING_SLOW_MM_S, HOMING_SLOW_BACKOFF);
+                   break;
+
+                case HOMING_SLOW_BACKOFF_TRANSITION:
+                    motors[i].steps_current = 0;
+                    stepper_move_const_vel(&motors[i], 99999, HOMING_FAST_MM_S, EXTENSION_FAST);
+                    break;
+
+                case EXTENSION_FAST_LIMIT_TRANSITION:
+                    stepper_move_const_vel(&motors[i], -HOMING_BACKOFF_STEPS, HOMING_SLOW_MM_S, EXTENSION_FAST_BACKOFF);
+                    break;
+                case EXTENSION_FAST_BACKOFF_TRANSITION:
+                    stepper_move_const_vel(&motors[i], 99999, HOMING_SLOW_MM_S, EXTENSION_SLOW);
+                    break;
+                case EXTENSION_SLOW_LIMIT_TRANSITION:
+                    stepper_move_const_vel(&motors[i], -99999, HOMING_SLOW_MM_S, EXTENSION_SLOW_BACKOFF);
+                    break;
+
+                case EXTENSION_SLOW_BACKOFF_TRANSITION:
+                // TODO: 
+                    motors[i].MAX_STEPS = motors[i].steps_current;
+                    stepper_goto_step(&motors[i], 0, HOMING_FAST_MM_S);
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    }
 
 }
 
-void stepper_move_const_vel(Stepper_t *m, int32_t steps, uint32_t vel_mm_s) {
+void stepper_move_const_vel(Stepper_t *m, int32_t steps, uint32_t vel_mm_s, MOTOR_STATE type) {
 
+    m->current_dir     = steps > 0 ? 1 : -1;
     if (steps < 0) {
         m->dir_port->BSRR = m->dir_pin;
         steps = -steps;
@@ -443,38 +533,60 @@ void stepper_move_const_vel(Stepper_t *m, int32_t steps, uint32_t vel_mm_s) {
     uint32_t arr_val = (1000000UL / (vel_step_s));
 
     m->steps_accel     = 0;
-    m->steps_decel     = steps;
+    m->steps_decel     = 0;
     m->arr_step        = 0;
     m->steps_total     = steps;
     m->steps_remaining = steps;
     m->arr_current     = arr_val;
     m->arr_fast        = arr_val;
     m->arr_slow        = arr_val;
-    m->running         = 1;
+    m->motor_state     = type;
 
     m->timer->ARR = arr_val;
     *(m->CCR)     = arr_val / 2;
+    m->timer->CNT = 0;
     m->timer->EGR |= TIM_EGR_UG;
     m->timer->CR1 |= TIM_CR1_CEN;
 }
 
-void home_stepper(Stepper_t *m) {
-    // move to home limit switch quick
-    
-    // back off
-    
-    // move to home limit switch slowly
-    
-    // back off
+void stepper_goto_step(Stepper_t *m, uint64_t step_number, uint32_t vel_mm_s) {
+    if (m->steps_current == step_number) return;
+
+    uint64_t distance = 0;
+    int8_t dir = 1;
+    if (step_number < m->steps_current) {
+        // negative dir (towards home)
+        m->dir_port->BSRR = m->dir_pin;
+        distance = m->steps_current - step_number;
+        dir = -1;
+    } else {
+       // positive dir (towards extension)
+       m->dir_port->BRR = m->dir_pin;
+       distance = step_number - m->steps_current;
+       dir = 1;
+    }
 
 
-    // extend to limit- limit switch quick
+    uint32_t vel_step_s = (vel_mm_s * STEPS_PER_REV) / MM_PER_REV;
+    uint32_t arr_val = (1000000UL / (vel_step_s));
 
-    // back off
+    m->steps_accel     = 0;
+    m->steps_decel     = 0;
+    m->arr_step        = 0;
+    m->steps_total     = distance;
+    m->steps_remaining = distance;
+    m->arr_current     = arr_val;
+    m->arr_fast        = arr_val;
+    m->arr_slow        = arr_val;
+    m->motor_state     = NORMAL_RUNNING;
+    m->current_dir     = dir;
 
-    // move to limit- limit switch slowly
+    m->timer->ARR = arr_val;
+    *(m->CCR)     = arr_val / 2;
+    m->timer->CNT = 0;
+    m->timer->EGR |= TIM_EGR_UG;
+    m->timer->CR1 |= TIM_CR1_CEN;
 
-    // set max step count of linear actuator for max extension
 
-    // return to 'home'
+
 }

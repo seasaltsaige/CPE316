@@ -25,20 +25,89 @@ void TIM6_DAC_IRQHandler() {
   if (TIM6->SR & TIM_SR_UIF) {
     TIM6->SR &= ~(TIM_SR_UIF);
     for (int i = 0; i < 6; i++) {
-      // if the motor is either not running
-      // homing, or extending (finding max extension)
-      // we don't need to accelerate
-      if (!motors[i].running || motors[i].homing || motors[i].extending) continue;
+
+      // Handle logic for stalls in certain states to allow for the actuators to chill out after stopping
+      if (motors[i].motor_state != IDLE && motors[i].motor_state != NORMAL_RUNNING) {
+        // if the motor is specifically in any of these states
+        if (motors[i].motor_state == HOMING_FAST_LIMIT || motors[i].motor_state == HOMING_FAST_BACKOFF_DONE || 
+            motors[i].motor_state == HOMING_SLOW_LIMIT || motors[i].motor_state == HOMING_SLOW_BACKOFF_DONE ||
+
+            motors[i].motor_state == EXTENSION_FAST_LIMIT || motors[i].motor_state == EXTENSION_FAST_BACKOFF_DONE || 
+            motors[i].motor_state == EXTENSION_SLOW_LIMIT || motors[i].motor_state == EXTENSION_SLOW_BACKOFF_DONE) {
+          // tick time
+          motors[i].ticks_ms++;
+          
+          // if time has passed defined holding period
+          if (motors[i].ticks_ms == HOMING_LIMIT_HOLD_MS) {
+            // reset counter
+            motors[i].ticks_ms = 0;
+
+            // Go to next state accordingly
+            if (motors[i].motor_state == HOMING_FAST_LIMIT)
+              motors[i].motor_state = HOMING_FAST_LIMIT_TRANSITION;
+            else if (motors[i].motor_state == HOMING_FAST_BACKOFF_DONE)
+              motors[i].motor_state = HOMING_FAST_BACKOFF_TRANSITION;
+            else if (motors[i].motor_state == HOMING_SLOW_LIMIT)
+              motors[i].motor_state = HOMING_SLOW_LIMIT_TRANSITION;
+            else if (motors[i].motor_state == HOMING_SLOW_BACKOFF_DONE)
+              motors[i].motor_state = HOMING_SLOW_BACKOFF_TRANSITION;
+
+            else if (motors[i].motor_state == EXTENSION_FAST_LIMIT)
+              motors[i].motor_state = EXTENSION_FAST_LIMIT_TRANSITION;
+            else if (motors[i].motor_state == EXTENSION_FAST_BACKOFF_DONE)
+              motors[i].motor_state = EXTENSION_FAST_BACKOFF_TRANSITION;
+            else if (motors[i].motor_state == EXTENSION_SLOW_LIMIT)
+              motors[i].motor_state = EXTENSION_SLOW_LIMIT_TRANSITION;
+            else if (motors[i].motor_state == EXTENSION_SLOW_BACKOFF_DONE)
+              motors[i].motor_state = EXTENSION_SLOW_BACKOFF_TRANSITION;
+
+            
+
+            // re-enable homing EXTI flag 
+            EXTI->IMR1 |= (motors[i].EXTI_home_flag);
+            EXTI->IMR1 |= (motors[i].EXTI_limit_flag);
+
+          }
+        }
+        continue;
+      }
+
+      if (motors[i].motor_state == IDLE || motors[i].motor_state != NORMAL_RUNNING) continue; 
       stepper_accel(&motors[i]);
     }
   }
 }
 
+// Stepper tick timer for LEG A, motor 1  
 void TIM1_UP_TIM16_IRQHandler() {
   if (TIM1->SR & TIM_SR_UIF) {
     TIM1->SR &= ~(TIM_SR_UIF);
     stepper_tick(&motors[0]);
   }
+}
+
+// Stepper tick timer for LEG A, motor 2
+void TIM2_IRQHandler() {
+  if (TIM2->SR & TIM_SR_UIF) {
+    TIM2->SR &= ~(TIM_SR_UIF);
+    stepper_tick(&motors[1]);
+  }
+}
+
+void TIM3_IRQHandler() {
+
+}
+
+void TIM4_IRQHandler() {
+
+}
+
+void TIM5_IRQHandler() {
+
+}
+
+void TIM8_IRQHandler() {
+
 }
 
 
@@ -47,7 +116,7 @@ void TIM1_UP_TIM16_IRQHandler() {
 // TODO: might want to mask interrupt on hit, then unmask after some debounce
 void EXTI1_IRQHandler() {
   if (EXTI->PR1 & EXTI_PR1_PIF1) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF1);
+    EXTI->PR1 |= (EXTI_PR1_PIF1);
     // HOME_PIN_C1 LIMIT SWITCH ACTIVE
 
     // Do stuff
@@ -56,7 +125,7 @@ void EXTI1_IRQHandler() {
 
 void EXTI2_IRQHandler() {
   if (EXTI->PR1 & EXTI_PR1_PIF2) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF2);
+    EXTI->PR1 |= (EXTI_PR1_PIF2);
     // HOME_PIN_C2 LIMIT SWITCH ACTIVE
     // Do stuff
   }
@@ -64,41 +133,114 @@ void EXTI2_IRQHandler() {
 
 void EXTI3_IRQHandler() {
   if (EXTI->PR1 & EXTI_PR1_PIF3) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF3);
+    EXTI->PR1 |= (EXTI_PR1_PIF3);
     // LIMIT_PIN_C2 LIMIT SWITCH ACTIVE
     // Do stuff
   }
 }
 
+
+// HOMING side
 void EXTI4_IRQHandler() {
+
   if (EXTI->PR1 & EXTI_PR1_PIF4) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF4);
-    // HOME_PIN_A1 LIMIT SWITCH ACTIVE
-    // Do stuff
+    // Mask interrupt so end stop bounce doesn't cause weirdness
+    EXTI->IMR1 &= ~(EXTI_IMR1_IM4);
+    // Clear pending flag FIRST
+    EXTI->PR1 = EXTI_PR1_PIF4;
+
+
+    switch (motors[0].motor_state) {
+      case HOMING_FAST:
+        *(motors[0].CCR) = 0;
+        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
+        motors[0].timer->CNT = 0;
+        motors[0].motor_state = HOMING_FAST_LIMIT;
+        motors[0].steps_current = 0;
+        break;
+
+      case HOMING_SLOW:
+        *(motors[0].CCR) = 0;
+        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
+        motors[0].timer->CNT = 0;
+        motors[0].motor_state = HOMING_SLOW_LIMIT;
+        motors[0].steps_current = 0;
+        break;
+
+      case HOMING_SLOW_BACKOFF:
+        // TODO: ZERO POSITION
+        *(motors[0].CCR) = 0;
+        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
+        motors[0].timer->CNT = 0;
+        motors[0].motor_state = HOMING_SLOW_BACKOFF_DONE;
+        motors[0].steps_current = 0;
+        break;
+
+      default:
+        // If none of the above cases happened, re-enable the interrupt
+        EXTI->IMR1 |= (EXTI_IMR1_IM4);
+        break;
+    }
+
   }
 }
 
 void EXTI9_5_IRQHandler() {
   if (EXTI->PR1 & EXTI_PR1_PIF5) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF5);
-    // LIMIT_PIN_A1 LIMIT SWITCH ACTIVE
-    // Do stuff
+    // Mask interrupt so end stop bounce doesn't cause weirdness
+    EXTI->IMR1 &= ~(EXTI_IMR1_IM5);
+    // // Clear pending flag FIRST
+    EXTI->PR1 = EXTI_PR1_PIF5;
+
+    switch (motors[0].motor_state) {
+      case EXTENSION_FAST:
+        *(motors[0].CCR) = 0;
+        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
+        motors[0].timer->CNT = 0;
+        motors[0].motor_state = EXTENSION_FAST_LIMIT;
+        break;
+
+      case EXTENSION_SLOW:
+        *(motors[0].CCR) = 0;
+        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
+        motors[0].timer->CNT = 0;
+        motors[0].motor_state = EXTENSION_SLOW_LIMIT;
+        break;
+
+      case EXTENSION_SLOW_BACKOFF:
+        // TODO: SET MAX EXTENSION HERE (MAX STEPS TO FULL EXTENSION)
+        *(motors[0].CCR) = 0;
+        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
+        motors[0].timer->CNT = 0;
+        motors[0].motor_state = EXTENSION_SLOW_BACKOFF_DONE;
+        motors[0].MAX_STEPS = motors[0].steps_current;
+        break;
+
+      default:
+        // If none of the above cases happened, re-enable the interrupt
+        EXTI->IMR1 |= (EXTI_IMR1_IM5);
+        break;
+    }
+    
   }
 
   if (EXTI->PR1 & EXTI_PR1_PIF6) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF6);
+    EXTI->PR1 = (EXTI_PR1_PIF6);
+    GPIOA->ODR ^= DIR_PIN_A2;
     // HOME_PIN_A2 LIMIT SWITCH ACTIVE
     // Do stuff
   }
 
   if (EXTI->PR1 & EXTI_PR1_PIF7) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF7);
+    EXTI->PR1 = (EXTI_PR1_PIF7);
+    GPIOA->ODR ^= DIR_PIN_A2;
     // LIMIT_PIN_A2 LIMIT SWITCH ACTIVE
     // Do stuff
   }
 
   if (EXTI->PR1 & EXTI_PR1_PIF9) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF9);
+    EXTI->PR1 = (EXTI_PR1_PIF9);
+    GPIOA->ODR ^= DIR_PIN_A2;
     // LIMIT_PIN_C1 LIMIT SWITCH ACTIVE
     // Do stuff
   }
@@ -106,48 +248,34 @@ void EXTI9_5_IRQHandler() {
 
 void EXTI15_10_IRQHandler() {
   if (EXTI->PR1 & EXTI_PR1_PIF10) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF10);
+    EXTI->PR1 = (EXTI_PR1_PIF10);
+    GPIOA->ODR ^= DIR_PIN_A2;
     // HOME_PIN_B2 LIMIT SWITCH ACTIVE
     // Do stuff
   }
 
   if (EXTI->PR1 & EXTI_PR1_PIF11) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF11);
+    EXTI->PR1 = (EXTI_PR1_PIF11);
+    GPIOA->ODR ^= DIR_PIN_A2;
     // LIMIT_PIN_B2 LIMIT SWITCH ACTIVE
     // Do stuff
   }
 
   if (EXTI->PR1 & EXTI_PR1_PIF14) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF14);
+    EXTI->PR1 = (EXTI_PR1_PIF14);
+    GPIOA->ODR ^= DIR_PIN_A2;
     // HOME_PIN_B1 LIMIT SWITCH ACTIVE
     // Do stuff
   }
 
   if (EXTI->PR1 & EXTI_PR1_PIF15) {
-    EXTI->PR1 &= ~(EXTI_PR1_PIF15);
+    EXTI->PR1 = (EXTI_PR1_PIF15);
+    GPIOA->ODR ^= DIR_PIN_A2;
     // LIMIT_PIN_B1 LIMIT SWITCH ACTIVE
     // Do stuff
   }
 }
-// void TIM2_IRQHandler() {
 
-// }
-
-// void TIM3_IRQHandler() {
-
-// }
-
-// void TIM4_IRQHandler() {
-
-// }
-
-// void TIM5_IRQHandler() {
-
-// }
-
-// void TIM8_IRQHandler() {
-
-// }
 
 int main(void)
 {
@@ -157,12 +285,7 @@ int main(void)
 
   STEWART_init();
 
-  int32_t test_dist_mm = -300;
-  int32_t test_dist_steps = (test_dist_mm * STEPS_PER_REV) / MM_PER_REV;
-
-  stepper_move_const_vel(&motors[0], test_dist_steps, 20);
-  // stepper_move(&motors[0], test_dist_steps, MOVE_TIME_MS);
-  
+  home_platform();
 
   while (1)
   {
@@ -210,10 +333,10 @@ void SystemClock_Config(void)
 
 void Error_Handler(void)
 {
-  __disable_irq();
-  while (1)
-  {
-  }
+  // __disable_irq();
+  // while (1)
+  // {
+  // }
 }
 #ifdef USE_FULL_ASSERT
 
