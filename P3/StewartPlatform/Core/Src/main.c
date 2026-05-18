@@ -16,6 +16,7 @@
   */
 #include "main.h"
 #include "stewart_controller.h"
+#include "helper.h"
 #include "stm32l476xx.h"
 #include <stdint.h>
 
@@ -94,186 +95,106 @@ void TIM2_IRQHandler() {
   }
 }
 
+// Stepper tick timer for LEG B, motor 1
 void TIM3_IRQHandler() {
-
+  if (TIM3->SR & TIM_SR_UIF) {
+    TIM3->SR &= ~(TIM_SR_UIF);
+    stepper_tick(&motors[2]);
+  }
 }
 
+// Stepper tick timer for LEG B, motor 2
 void TIM4_IRQHandler() {
-
+  if (TIM4->SR & TIM_SR_UIF) {
+    TIM4->SR &= ~(TIM_SR_UIF);
+    stepper_tick(&motors[3]);
+  }
 }
 
+// Stepper tick timer for LEG C, motor 1
 void TIM5_IRQHandler() {
-
+  if (TIM5->SR & TIM_SR_UIF) {
+    TIM5->SR &= ~(TIM_SR_UIF);
+    stepper_tick(&motors[4]);
+  }
 }
 
+// Stepper tick timer for LEG C, motor 2
 void TIM8_IRQHandler() {
-
-}
-
+  if (TIM8->SR & TIM_SR_UIF) {
+    TIM8->SR &= ~(TIM_SR_UIF);
+    stepper_tick(&motors[5]);
+  }
+};
 
 // GPIO interrupt vectors
 
-// TODO: might want to mask interrupt on hit, then unmask after some debounce
+// LEG C1 HOME END STOP
 void EXTI1_IRQHandler() {
-  if (EXTI->PR1 & EXTI_PR1_PIF1) {
-    EXTI->PR1 |= (EXTI_PR1_PIF1);
-    // HOME_PIN_C1 LIMIT SWITCH ACTIVE
-
-    // Do stuff
-  }
+  if (EXTI->PR1 & EXTI_PR1_PIF1)
+    handle_endstop(&motors[4], HOME_ENDSTOP, EXTI_PR1_PIF1); 
 }
 
+// LEG C2 HOME END STOP
 void EXTI2_IRQHandler() {
-  if (EXTI->PR1 & EXTI_PR1_PIF2) {
-    EXTI->PR1 |= (EXTI_PR1_PIF2);
-    // HOME_PIN_C2 LIMIT SWITCH ACTIVE
-    // Do stuff
-  }
+  if (EXTI->PR1 & EXTI_PR1_PIF2)
+    handle_endstop(&motors[5], HOME_ENDSTOP, EXTI_PR1_PIF2); 
 }
 
+// LEG C2 EXTENSION END STOP
 void EXTI3_IRQHandler() {
-  if (EXTI->PR1 & EXTI_PR1_PIF3) {
-    EXTI->PR1 |= (EXTI_PR1_PIF3);
-    // LIMIT_PIN_C2 LIMIT SWITCH ACTIVE
-    // Do stuff
-  }
+  if (EXTI->PR1 & EXTI_PR1_PIF3)
+    handle_endstop(&motors[5], EXTENSION_ENDSTOP, EXTI_PR1_PIF3); 
 }
 
 
-// HOMING side
+// LEG A1 HOME END STOP
 void EXTI4_IRQHandler() {
-
-  if (EXTI->PR1 & EXTI_PR1_PIF4) {
-    // Mask interrupt so end stop bounce doesn't cause weirdness
-    EXTI->IMR1 &= ~(EXTI_IMR1_IM4);
-    // Clear pending flag FIRST
-    EXTI->PR1 = EXTI_PR1_PIF4;
-
-
-    switch (motors[0].motor_state) {
-      case HOMING_FAST:
-        *(motors[0].CCR) = 0;
-        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
-        motors[0].timer->CNT = 0;
-        motors[0].motor_state = HOMING_FAST_LIMIT;
-        motors[0].steps_current = 0;
-        break;
-
-      case HOMING_SLOW:
-        *(motors[0].CCR) = 0;
-        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
-        motors[0].timer->CNT = 0;
-        motors[0].motor_state = HOMING_SLOW_LIMIT;
-        motors[0].steps_current = 0;
-        break;
-
-      case HOMING_SLOW_BACKOFF:
-        // TODO: ZERO POSITION
-        *(motors[0].CCR) = 0;
-        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
-        motors[0].timer->CNT = 0;
-        motors[0].motor_state = HOMING_SLOW_BACKOFF_DONE;
-        motors[0].steps_current = 0;
-        break;
-
-      default:
-        // If none of the above cases happened, re-enable the interrupt
-        EXTI->IMR1 |= (EXTI_IMR1_IM4);
-        break;
-    }
-
-  }
+  if (EXTI->PR1 & EXTI_PR1_PIF4)
+    handle_endstop(&motors[0], HOME_ENDSTOP, EXTI_PR1_PIF4); 
 }
 
 void EXTI9_5_IRQHandler() {
-  if (EXTI->PR1 & EXTI_PR1_PIF5) {
-    // Mask interrupt so end stop bounce doesn't cause weirdness
-    EXTI->IMR1 &= ~(EXTI_IMR1_IM5);
-    // // Clear pending flag FIRST
-    EXTI->PR1 = EXTI_PR1_PIF5;
+  // LEG A1 EXTENSION END STOP
+  if (EXTI->PR1 & EXTI_PR1_PIF5) 
+    handle_endstop(&motors[0], EXTENSION_ENDSTOP, EXTI_PR1_PIF5); 
 
-    switch (motors[0].motor_state) {
-      case EXTENSION_FAST:
-        *(motors[0].CCR) = 0;
-        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
-        motors[0].timer->CNT = 0;
-        motors[0].motor_state = EXTENSION_FAST_LIMIT;
-        break;
+  // LEG A2 HOME END STOP
+  if (EXTI->PR1 & EXTI_PR1_PIF6)
+    handle_endstop(&motors[1], HOME_ENDSTOP, EXTI_PR1_PIF6); 
 
-      case EXTENSION_SLOW:
-        *(motors[0].CCR) = 0;
-        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
-        motors[0].timer->CNT = 0;
-        motors[0].motor_state = EXTENSION_SLOW_LIMIT;
-        break;
 
-      case EXTENSION_SLOW_BACKOFF:
-        // TODO: SET MAX EXTENSION HERE (MAX STEPS TO FULL EXTENSION)
-        *(motors[0].CCR) = 0;
-        motors[0].timer->CR1 &= ~TIM_CR1_CEN;
-        motors[0].timer->CNT = 0;
-        motors[0].motor_state = EXTENSION_SLOW_BACKOFF_DONE;
-        motors[0].MAX_STEPS = motors[0].steps_current;
-        break;
+  // LEG A2 EXTENSION END STOP
+  if (EXTI->PR1 & EXTI_PR1_PIF7)
+    handle_endstop(&motors[1], EXTENSION_ENDSTOP, EXTI_PR1_PIF7); 
 
-      default:
-        // If none of the above cases happened, re-enable the interrupt
-        EXTI->IMR1 |= (EXTI_IMR1_IM5);
-        break;
-    }
-    
-  }
 
-  if (EXTI->PR1 & EXTI_PR1_PIF6) {
-    EXTI->PR1 = (EXTI_PR1_PIF6);
-    GPIOA->ODR ^= DIR_PIN_A2;
-    // HOME_PIN_A2 LIMIT SWITCH ACTIVE
-    // Do stuff
-  }
+  // LEG C1 EXTENSION END STOP
+  if (EXTI->PR1 & EXTI_PR1_PIF9)
+    handle_endstop(&motors[4], EXTENSION_ENDSTOP, EXTI_PR1_PIF9); 
 
-  if (EXTI->PR1 & EXTI_PR1_PIF7) {
-    EXTI->PR1 = (EXTI_PR1_PIF7);
-    GPIOA->ODR ^= DIR_PIN_A2;
-    // LIMIT_PIN_A2 LIMIT SWITCH ACTIVE
-    // Do stuff
-  }
-
-  if (EXTI->PR1 & EXTI_PR1_PIF9) {
-    EXTI->PR1 = (EXTI_PR1_PIF9);
-    GPIOA->ODR ^= DIR_PIN_A2;
-    // LIMIT_PIN_C1 LIMIT SWITCH ACTIVE
-    // Do stuff
-  }
 }
 
 void EXTI15_10_IRQHandler() {
-  if (EXTI->PR1 & EXTI_PR1_PIF10) {
-    EXTI->PR1 = (EXTI_PR1_PIF10);
-    GPIOA->ODR ^= DIR_PIN_A2;
-    // HOME_PIN_B2 LIMIT SWITCH ACTIVE
-    // Do stuff
-  }
+  
+  // LEG B2 HOME END STOP
+  if (EXTI->PR1 & EXTI_PR1_PIF10)
+    handle_endstop(&motors[3], HOME_ENDSTOP, EXTI_PR1_PIF10); 
 
-  if (EXTI->PR1 & EXTI_PR1_PIF11) {
-    EXTI->PR1 = (EXTI_PR1_PIF11);
-    GPIOA->ODR ^= DIR_PIN_A2;
-    // LIMIT_PIN_B2 LIMIT SWITCH ACTIVE
-    // Do stuff
-  }
 
-  if (EXTI->PR1 & EXTI_PR1_PIF14) {
-    EXTI->PR1 = (EXTI_PR1_PIF14);
-    GPIOA->ODR ^= DIR_PIN_A2;
-    // HOME_PIN_B1 LIMIT SWITCH ACTIVE
-    // Do stuff
-  }
+  // LEG B2 EXTENSION END STOP
+  if (EXTI->PR1 & EXTI_PR1_PIF11)
+    handle_endstop(&motors[3], EXTENSION_ENDSTOP, EXTI_PR1_PIF11); 
 
-  if (EXTI->PR1 & EXTI_PR1_PIF15) {
-    EXTI->PR1 = (EXTI_PR1_PIF15);
-    GPIOA->ODR ^= DIR_PIN_A2;
-    // LIMIT_PIN_B1 LIMIT SWITCH ACTIVE
-    // Do stuff
-  }
+  // LEG B1 HOME END STOP
+  if (EXTI->PR1 & EXTI_PR1_PIF14)
+    handle_endstop(&motors[2], HOME_ENDSTOP, EXTI_PR1_PIF14); 
+
+
+  // LEG B1 EXTENSION END STOP
+  if (EXTI->PR1 & EXTI_PR1_PIF15)
+    handle_endstop(&motors[2], EXTENSION_ENDSTOP, EXTI_PR1_PIF15); 
+
 }
 
 
@@ -284,7 +205,7 @@ int main(void)
   SystemClock_Config();
 
   STEWART_init();
-
+  // Blocking call until all legs have been homed and positioned in starting position
   home_platform();
 
   while (1)

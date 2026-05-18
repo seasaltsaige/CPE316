@@ -315,10 +315,13 @@ void STEWART_init() {
         (1UL << (TIM6_DAC_IRQn - 32)) |
         (1UL << (EXTI15_10_IRQn - 32)) 
     );
-    // TODO: EXTI isrs SHOULD have the highest priority
-    // followed by acceleration timer
-    // followed by step timers
 
+
+    // ALL limit switch interrupts (EXTI)
+    // have highest priority of 0, followed
+    // by TIM6 which is a time keeper and accel
+    // handler, finally followed by the 6 timers
+    // for step tracking on each leg
     NVIC->IP[TIM1_UP_TIM16_IRQn] = 0xF0;
     NVIC->IP[TIM2_IRQn] = 0xF0;
     NVIC->IP[TIM3_IRQn] = 0xF0;
@@ -346,32 +349,36 @@ void STEWART_init() {
     TIM6->CR1 |= TIM_CR1_CEN;
 }
 
-void stepper_move(Stepper_t *m, int32_t steps, uint32_t total_time_ms) {
-    if (steps == 0) return;
+void stepper_move(Stepper_t *m, uint64_t step_number, uint32_t total_time_ms) {
+    if (m->steps_current == step_number) return;
 
-    if (steps < 0) {
+    uint64_t distance = 0;
+    if (step_number < m->steps_current) {
         m->dir_port->BSRR = m->dir_pin;
-        steps = -steps;
+        m->current_dir = -1;
+        distance = m->steps_current - step_number;
     } else {
         m->dir_port->BRR = m->dir_pin;
+        m->current_dir = 1;
+        distance = step_number - m->steps_current;
     }
 
-    uint32_t v_cruise = (2 * (uint32_t)steps * 1000) / total_time_ms;
+    uint32_t v_cruise = (2 * (uint32_t)distance * 1000) / total_time_ms;
 
     uint32_t arr_cruise = 1000000UL / v_cruise;
 
     if (v_cruise < 3000) {
 
-        uint32_t v_flat  = ((uint32_t)steps * 1000) / total_time_ms;
+        uint32_t v_flat  = ((uint32_t)distance * 1000) / total_time_ms;
         if (v_flat == 0) v_flat = 1;
         uint32_t arr_flat = 1000000UL / v_flat;
         if (arr_flat > 0xFFFF) arr_flat = 0xFFFF;
 
         m->steps_accel     = 0;
-        m->steps_decel     = steps;
+        m->steps_decel     = distance;
         m->arr_step        = 0;
-        m->steps_total     = steps;
-        m->steps_remaining = steps;
+        m->steps_total     = distance;
+        m->steps_remaining = distance;
         m->arr_current     = arr_flat;
         m->arr_fast        = arr_flat;
         m->arr_slow        = arr_flat;
@@ -388,16 +395,16 @@ void stepper_move(Stepper_t *m, int32_t steps, uint32_t total_time_ms) {
     if (arr_slow > 0xFFFF) arr_slow = 0xFFFF;  // clamp to timer max
 
   
-    m->steps_accel  = steps / 4;
-    m->steps_decel  = steps - (steps / 4);
+    m->steps_accel  = distance / 4;
+    m->steps_decel  = distance - (distance / 4);
 
     uint32_t accel_ticks = total_time_ms / 3;
     if (accel_ticks == 0) accel_ticks = 1;
     m->arr_step = (arr_slow - arr_cruise) / accel_ticks;
     if (m->arr_step == 0) m->arr_step = 1;
 
-    m->steps_total     = steps;
-    m->steps_remaining = steps;
+    m->steps_total     = distance;
+    m->steps_remaining = distance;
     m->arr_current     = arr_slow;
     m->arr_fast        = arr_cruise;
     m->arr_slow        = arr_slow;
@@ -416,7 +423,15 @@ void stepper_tick(Stepper_t *m) {
 
     m->steps_current += m->current_dir;
 
-    if (m->steps_remaining <= 0) {
+    // If either finished steps, or hit software limits, exit movement
+    if (m->steps_remaining <= 0 || 
+        (m->motor_state == NORMAL_RUNNING && 
+            ((m->steps_current <= SOFTWARE_STEP_LIMIT && m->current_dir == -1) || 
+             (m->steps_current >= (m->MAX_STEPS - SOFTWARE_STEP_LIMIT) && m->current_dir == 1))
+        )
+    ) {
+
+        m->steps_remaining = 0;
         *(m->CCR) = 0;
         m->timer->CR1 &= ~(TIM_CR1_CEN);
 
@@ -462,18 +477,19 @@ void stepper_accel(Stepper_t *m) {
 
 
 void home_platform() {
-    const uint8_t NUM_MOTORS = 1; 
+    const uint8_t NUM_MOTORS = 2; 
     // Loop through motors
     // todo: add rest of motors
     for (int i = 0; i < NUM_MOTORS; i++) {
         // move down at 20mm/s
         // begin in homing fast state
-        stepper_move_const_vel(&motors[i], -99999, HOMING_FAST_MM_S, HOMING_FAST);
+        stepper_move_const_vel(&motors[i], -999999, HOMING_FAST_MM_S, HOMING_FAST);
     }
 
     // while all motors have not re-entered idle
     while (
-        motors[0].motor_state != IDLE && motors[0].motor_state != NORMAL_RUNNING 
+        (motors[0].motor_state != IDLE && motors[0].motor_state != NORMAL_RUNNING) ||
+        (motors[1].motor_state != IDLE && motors[1].motor_state != NORMAL_RUNNING )
 
     ) {
         for (int i = 0; i < NUM_MOTORS; i++) {
@@ -483,32 +499,33 @@ void home_platform() {
                     stepper_move_const_vel(&motors[i], HOMING_BACKOFF_STEPS, HOMING_SLOW_MM_S, HOMING_FAST_BACKOFF);
                     break;
                 case HOMING_FAST_BACKOFF_TRANSITION:
-                    stepper_move_const_vel(&motors[i], -99999, HOMING_SLOW_MM_S, HOMING_SLOW);
+                    stepper_move_const_vel(&motors[i], -999999, HOMING_SLOW_MM_S, HOMING_SLOW);
                     break;
                 case HOMING_SLOW_LIMIT_TRANSITION:
                     // arbitrary step count. halted once limit switch is cleared
-                    stepper_move_const_vel(&motors[i], 99999, HOMING_SLOW_MM_S, HOMING_SLOW_BACKOFF);
+                    stepper_move_const_vel(&motors[i], 999999, HOMING_SLOW_MM_S, HOMING_SLOW_BACKOFF);
                    break;
 
                 case HOMING_SLOW_BACKOFF_TRANSITION:
                     motors[i].steps_current = 0;
-                    stepper_move_const_vel(&motors[i], 99999, HOMING_FAST_MM_S, EXTENSION_FAST);
+                    stepper_move_const_vel(&motors[i], 999999, HOMING_FAST_MM_S, EXTENSION_FAST);
                     break;
 
                 case EXTENSION_FAST_LIMIT_TRANSITION:
                     stepper_move_const_vel(&motors[i], -HOMING_BACKOFF_STEPS, HOMING_SLOW_MM_S, EXTENSION_FAST_BACKOFF);
                     break;
                 case EXTENSION_FAST_BACKOFF_TRANSITION:
-                    stepper_move_const_vel(&motors[i], 99999, HOMING_SLOW_MM_S, EXTENSION_SLOW);
+                    stepper_move_const_vel(&motors[i], 999999, HOMING_SLOW_MM_S, EXTENSION_SLOW);
                     break;
                 case EXTENSION_SLOW_LIMIT_TRANSITION:
-                    stepper_move_const_vel(&motors[i], -99999, HOMING_SLOW_MM_S, EXTENSION_SLOW_BACKOFF);
+                    stepper_move_const_vel(&motors[i], -999999, HOMING_SLOW_MM_S, EXTENSION_SLOW_BACKOFF);
                     break;
 
                 case EXTENSION_SLOW_BACKOFF_TRANSITION:
                 // TODO: 
                     motors[i].MAX_STEPS = motors[i].steps_current;
-                    stepper_goto_step(&motors[i], 0, HOMING_FAST_MM_S);
+                    // stepper_goto_step(&motors[i], 0, HOMING_FAST_MM_S);
+                    stepper_move(&motors[i], 0, MOVE_TIME_MS);
                     break;
 
                 default:
