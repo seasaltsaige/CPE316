@@ -10,12 +10,14 @@
 #define MM_PER_REV           2
 #define MOVE_TIME_MS         4000
 
-#define HOMING_FAST_MM_S     13
+#define HOMING_FAST_MM_S     17
 #define HOMING_SLOW_MM_S     2
 #define HOMING_BACKOFF_STEPS 100
 #define HOMING_LIMIT_HOLD_MS 300
 
 #define SOFTWARE_STEP_LIMIT 100
+
+#define MIN_TOP_SPEED_MM_S  15
 
 // --- Leg A ---
 #define LEG_A_PORT      GPIOA
@@ -93,6 +95,7 @@ typedef enum {
     EXTENSION_SLOW_BACKOFF_DONE,
     EXTENSION_SLOW_BACKOFF_TRANSITION,
 
+    DELAY,
     NORMAL_RUNNING,
 } MOTOR_STATE;
 
@@ -108,6 +111,7 @@ typedef struct {
     volatile uint64_t EXTI_limit_flag;
 
     volatile MOTOR_STATE motor_state;
+    volatile uint32_t delay_time_ms;
     volatile uint32_t ticks_ms;
 
     volatile uint64_t MAX_STEPS; // MAX EXTENSION RANGE FROM HOME 0 = HOME | MAX_STEPS = FULL EXTENSION
@@ -119,6 +123,9 @@ typedef struct {
     volatile int32_t steps_total;
     volatile int32_t steps_accel;
     volatile int32_t steps_decel; 
+
+    volatile uint32_t ticks_elapsed;
+    volatile uint32_t total_time_ms;
 
     volatile uint32_t arr_current;
     volatile uint32_t arr_fast;         

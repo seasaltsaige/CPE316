@@ -30,11 +30,15 @@ void TIM6_DAC_IRQHandler() {
       // Handle logic for stalls in certain states to allow for the actuators to chill out after stopping
       if (motors[i].motor_state != IDLE && motors[i].motor_state != NORMAL_RUNNING) {
         // if the motor is specifically in any of these states
+        // being very explicit here, but this could be condensed into a range check if states are re-arranged
+        // in the enum in such a way
         if (motors[i].motor_state == HOMING_FAST_LIMIT || motors[i].motor_state == HOMING_FAST_BACKOFF_DONE || 
             motors[i].motor_state == HOMING_SLOW_LIMIT || motors[i].motor_state == HOMING_SLOW_BACKOFF_DONE ||
 
             motors[i].motor_state == EXTENSION_FAST_LIMIT || motors[i].motor_state == EXTENSION_FAST_BACKOFF_DONE || 
-            motors[i].motor_state == EXTENSION_SLOW_LIMIT || motors[i].motor_state == EXTENSION_SLOW_BACKOFF_DONE) {
+            motors[i].motor_state == EXTENSION_SLOW_LIMIT || motors[i].motor_state == EXTENSION_SLOW_BACKOFF_DONE ||
+          
+            motors[i].motor_state == DELAY) {
           // tick time
           motors[i].ticks_ms++;
           
@@ -43,31 +47,14 @@ void TIM6_DAC_IRQHandler() {
             // reset counter
             motors[i].ticks_ms = 0;
 
-            // Go to next state accordingly
-            if (motors[i].motor_state == HOMING_FAST_LIMIT)
-              motors[i].motor_state = HOMING_FAST_LIMIT_TRANSITION;
-            else if (motors[i].motor_state == HOMING_FAST_BACKOFF_DONE)
-              motors[i].motor_state = HOMING_FAST_BACKOFF_TRANSITION;
-            else if (motors[i].motor_state == HOMING_SLOW_LIMIT)
-              motors[i].motor_state = HOMING_SLOW_LIMIT_TRANSITION;
-            else if (motors[i].motor_state == HOMING_SLOW_BACKOFF_DONE)
-              motors[i].motor_state = HOMING_SLOW_BACKOFF_TRANSITION;
 
-            else if (motors[i].motor_state == EXTENSION_FAST_LIMIT)
-              motors[i].motor_state = EXTENSION_FAST_LIMIT_TRANSITION;
-            else if (motors[i].motor_state == EXTENSION_FAST_BACKOFF_DONE)
-              motors[i].motor_state = EXTENSION_FAST_BACKOFF_TRANSITION;
-            else if (motors[i].motor_state == EXTENSION_SLOW_LIMIT)
-              motors[i].motor_state = EXTENSION_SLOW_LIMIT_TRANSITION;
-            else if (motors[i].motor_state == EXTENSION_SLOW_BACKOFF_DONE)
-              motors[i].motor_state = EXTENSION_SLOW_BACKOFF_TRANSITION;
-
-            
-
+            if (motors[i].motor_state == DELAY)
+              motors[i].motor_state = IDLE;
+            else
+              motors[i].motor_state++;
             // re-enable homing EXTI flag 
             EXTI->IMR1 |= (motors[i].EXTI_home_flag);
             EXTI->IMR1 |= (motors[i].EXTI_limit_flag);
-
           }
         }
         continue;
@@ -147,7 +134,6 @@ void EXTI3_IRQHandler() {
     handle_endstop(&motors[5], EXTENSION_ENDSTOP, EXTI_PR1_PIF3); 
 }
 
-
 // LEG A1 HOME END STOP
 void EXTI4_IRQHandler() {
   if (EXTI->PR1 & EXTI_PR1_PIF4)
@@ -207,6 +193,29 @@ int main(void)
   STEWART_init();
   // Blocking call until all legs have been homed and positioned in starting position
   home_platform();
+
+  while (motors[0].motor_state != IDLE) {};
+
+  stepper_move(&motors[0], (motors[0].MAX_STEPS * 2) / 3, MOVE_TIME_MS);
+  while (motors[0].motor_state != IDLE) {};
+
+  delay_stepper_ms(&motors[0], 500);
+  while (motors[0].motor_state != IDLE) {};
+
+  stepper_move(&motors[0], 0, MOVE_TIME_MS);
+  while (motors[0].motor_state != IDLE) {};
+
+  delay_stepper_ms(&motors[0], 500);
+  while (motors[0].motor_state != IDLE) {};
+
+  stepper_move(&motors[0], (motors[0].MAX_STEPS * 5) / 6, MOVE_TIME_MS);
+  while (motors[0].motor_state != IDLE) {};
+
+  delay_stepper_ms(&motors[0], 500);
+  while (motors[0].motor_state != IDLE) {};
+
+  stepper_move(&motors[0], (motors[0].MAX_STEPS), MOVE_TIME_MS);
+  while (motors[0].motor_state != IDLE) {};
 
   while (1)
   {

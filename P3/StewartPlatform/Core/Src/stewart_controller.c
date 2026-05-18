@@ -3,6 +3,7 @@
 #include "stm32l4xx_hal.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 
 Stepper_t motors[6] = {
     { TIM1, &TIM1->CCR1, LEG_A_PORT, DIR_PIN_A1, HOME_PIN_A1, LIMIT_PIN_A1, EXTI_IMR1_IM4, EXTI_IMR1_IM5 },
@@ -22,6 +23,7 @@ void STEWART_init() {
     RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN | RCC_APB1ENR1_TIM3EN | RCC_APB1ENR1_TIM4EN | RCC_APB1ENR1_TIM5EN | RCC_APB1ENR1_TIM6EN;
     // EXTI interrupts
     RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+    SCB->CPACR |= ((3UL << 10*2) | (3UL << 11*2));
 
     // GPIO init, PA0, PA1, PA8, PB4, PB6, PC6
     // set to AF mode
@@ -352,6 +354,7 @@ void STEWART_init() {
 void stepper_move(Stepper_t *m, uint64_t step_number, uint32_t total_time_ms) {
     if (m->steps_current == step_number) return;
 
+    // calculate direction and step distance to travel
     uint64_t distance = 0;
     if (step_number < m->steps_current) {
         m->dir_port->BSRR = m->dir_pin;
@@ -363,26 +366,28 @@ void stepper_move(Stepper_t *m, uint64_t step_number, uint32_t total_time_ms) {
         distance = step_number - m->steps_current;
     }
 
-    uint32_t v_cruise = (2 * (uint32_t)distance * 1000) / total_time_ms;
+    uint32_t arr_peak = (uint32_t)(((uint64_t)total_time_ms * 500UL) / distance);
+    if (arr_peak < 1)      arr_peak = 1;
+    if (arr_peak > 0xFFFF) arr_peak = 0xFFFF;
 
-    uint32_t arr_cruise = 1000000UL / v_cruise;
-
-    if (v_cruise < 3000) {
-
-        uint32_t v_flat  = ((uint32_t)distance * 1000) / total_time_ms;
-        if (v_flat == 0) v_flat = 1;
-        uint32_t arr_flat = 1000000UL / v_flat;
+    // 667 arr is ~like 20mm/s i think...
+    // also just kinda felt good so...
+    if (arr_peak >= 667) {
+        uint32_t arr_flat = (uint32_t)(((uint64_t)total_time_ms * 1000UL) / distance);
+        if (arr_flat < 1)      arr_flat = 1;
         if (arr_flat > 0xFFFF) arr_flat = 0xFFFF;
 
-        m->steps_accel     = 0;
-        m->steps_decel     = distance;
-        m->arr_step        = 0;
-        m->steps_total     = distance;
+        m->ticks_elapsed = 0;
+        m->total_time_ms = total_time_ms;
+        m->steps_accel = 0;
+        m->steps_decel = distance;
+        m->arr_step = 0;
+        m->steps_total = distance;
         m->steps_remaining = distance;
-        m->arr_current     = arr_flat;
-        m->arr_fast        = arr_flat;
-        m->arr_slow        = arr_flat;
-        m->motor_state     = NORMAL_RUNNING;
+        m->arr_current = arr_flat;
+        m->arr_fast = arr_flat;
+        m->arr_slow = arr_flat;
+        m->motor_state = NORMAL_RUNNING;
 
         m->timer->ARR = arr_flat;
         *(m->CCR)     = arr_flat / 2;
@@ -391,27 +396,23 @@ void stepper_move(Stepper_t *m, uint64_t step_number, uint32_t total_time_ms) {
         return;
     }
 
-    uint32_t arr_slow = arr_cruise * 10;
-    if (arr_slow > 0xFFFF) arr_slow = 0xFFFF;  // clamp to timer max
+    uint64_t half_steps = (distance / 2);
+    if (half_steps == 0) half_steps = 1;
 
-  
-    m->steps_accel  = distance / 4;
-    m->steps_decel  = distance - (distance / 4);
-
-    uint32_t accel_ticks = total_time_ms / 3;
-    if (accel_ticks == 0) accel_ticks = 1;
-    m->arr_step = (arr_slow - arr_cruise) / accel_ticks;
-    if (m->arr_step == 0) m->arr_step = 1;
-
+    m->ticks_elapsed   = 0;
+    m->total_time_ms   = total_time_ms;
+    m->steps_accel     = half_steps;
+    m->steps_decel     = half_steps;
     m->steps_total     = distance;
     m->steps_remaining = distance;
-    m->arr_current     = arr_slow;
-    m->arr_fast        = arr_cruise;
-    m->arr_slow        = arr_slow;
+    m->arr_fast        = arr_peak;
+    m->arr_slow        = 0xFFFF;
+    m->arr_current     = 0xFFFF;
+    m->arr_step        = 1;
     m->motor_state     = NORMAL_RUNNING;
 
-    m->timer->ARR = arr_slow;
-    *(m->CCR)     = arr_slow / 2;
+    m->timer->ARR = 0xFFFF;
+    *(m->CCR)     = 0xFFFF / 2;
     m->timer->EGR |= TIM_EGR_UG;
     m->timer->CR1 |= TIM_CR1_CEN;
 }
@@ -441,7 +442,7 @@ void stepper_tick(Stepper_t *m) {
         else if (m->motor_state == EXTENSION_FAST_BACKOFF)
             m->motor_state = EXTENSION_FAST_BACKOFF_DONE;
 
-        // else m->motor_state = IDLE;
+        else m->motor_state = IDLE;
         
 
         return;
@@ -452,32 +453,41 @@ void stepper_tick(Stepper_t *m) {
 void stepper_accel(Stepper_t *m) {
     if (m->motor_state != NORMAL_RUNNING) return;
 
-    int32_t steps_done = m->steps_total - m->steps_remaining;
+    if (m->arr_step != 0) {
 
-    if (steps_done < m->steps_accel) {
-        // Accelerating: decrease ARR toward cruise
-        if (m->arr_current > m->arr_fast + m->arr_step) {
-            m->arr_current -= m->arr_step;
+        float t_ticks = (float)m->ticks_elapsed / (float)m->total_time_ms;
+
+        // in theory this should never be the case, but just in case
+        if (t_ticks > 1.0f) t_ticks = 1.0f;
+
+        // Calculate velocity based on cosine wave
+        // in range from 0 to 2pi (in terms of ticks calculate above)
+        float v_norm = (1.0f - cosf(2 * M_PI * t_ticks)) / 2;
+
+        uint32_t arr;
+        if (v_norm < 0.001f) {
+            // if the speed is too small, just set it 
+            // at our max arr value (16 bit limit)
+            arr = 0xFFFF;
         } else {
-            m->arr_current = m->arr_fast;
+            // otherwise, calculate the arr value based on the 
+            // fastest calculated arr value
+            arr = (uint32_t)((float)m->arr_fast / v_norm);
+            if (arr > 0xFFFF) arr = 0xFFFF;
+            if (arr < m->arr_fast) arr = m->arr_fast;
         }
-    } else if (m->steps_remaining < m->steps_accel) {
-        // Decelerating: increase ARR back toward slow
-        if (m->arr_current < m->arr_slow - m->arr_step) {
-            m->arr_current += m->arr_step;
-        } else {
-            m->arr_current = m->arr_slow;
-        }
+
+        m->arr_current = arr;
+        m->ticks_elapsed++;
     }
-    // else: cruise phase, ARR stays at arr_fast
 
     m->timer->ARR = m->arr_current;
-    *(m->CCR)     = m->arr_current / 2;
+    *(m->CCR) = m->arr_current / 2;
 }
 
 
 void home_platform() {
-    const uint8_t NUM_MOTORS = 2; 
+    const uint8_t NUM_MOTORS = 1; 
     // Loop through motors
     // todo: add rest of motors
     for (int i = 0; i < NUM_MOTORS; i++) {

@@ -1,5 +1,6 @@
 #include "helper.h"
 #include "stewart_controller.h"
+#include <stdint.h>
 
 
 void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_flag) {
@@ -83,4 +84,9 @@ void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_fl
     }
   }
 
+}
+
+void delay_stepper_ms(Stepper_t *m, uint32_t ms) {
+  m->delay_time_ms = ms;
+  m->motor_state = DELAY;
 }
