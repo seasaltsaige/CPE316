@@ -1,4 +1,4 @@
-# Install script for directory: G:/projects/CPE316/P3/StewartPlatform
+# Install script for directory: D:/CPE316/P3/StewartPlatform
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,13 +39,13 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
-  include("G:/projects/CPE316/P3/StewartPlatform/build/Release/cmake/stm32cubemx/cmake_install.cmake")
+  include("D:/CPE316/P3/StewartPlatform/build/Release/cmake/stm32cubemx/cmake_install.cmake")
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "G:/projects/CPE316/P3/StewartPlatform/build/Release/install_local_manifest.txt"
+  file(WRITE "D:/CPE316/P3/StewartPlatform/build/Release/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
 if(CMAKE_INSTALL_COMPONENT)
@@ -61,6 +61,6 @@ else()
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "G:/projects/CPE316/P3/StewartPlatform/build/Release/${CMAKE_INSTALL_MANIFEST}"
+  file(WRITE "D:/CPE316/P3/StewartPlatform/build/Release/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

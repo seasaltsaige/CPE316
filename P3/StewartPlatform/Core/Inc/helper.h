@@ -11,5 +11,8 @@ typedef enum {
 void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_flag);
 void delay_stepper_ms(Stepper_t *m, uint32_t ms);
 
+// TODO: Read endstops on power up to ensure we dont explode
+void read_endstops_pwr_up(Stepper_t *m);
+
 
 #endif

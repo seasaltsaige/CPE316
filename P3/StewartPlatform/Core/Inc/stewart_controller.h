@@ -8,16 +8,20 @@
 #define STEPS_PER_REV        200
 #define LEAD_SCREW_LEN_MM    300
 #define MM_PER_REV           2
-#define MOVE_TIME_MS         1700
+#define MOVE_TIME_MS         2000
 
 #define HOMING_FAST_MM_S     17
 #define HOMING_SLOW_MM_S     2
-#define HOMING_BACKOFF_STEPS 80
+#define HOMING_BACKOFF_STEPS 100
 #define HOMING_LIMIT_HOLD_MS 300
 
 #define SOFTWARE_STEP_LIMIT 100
 
 #define MIN_TOP_SPEED_MM_S  15
+
+
+#define TIM_PSC 80
+#define TIM6_FREQ_HZ 1000
 
 // --- Leg A ---
 #define LEG_A_PORT      GPIOA
@@ -109,6 +113,7 @@ typedef struct {
     volatile uint16_t limit_pin;
     volatile uint64_t EXTI_home_flag;
     volatile uint64_t EXTI_limit_flag;
+    
 
     volatile MOTOR_STATE motor_state;
     volatile uint32_t delay_time_ms;
@@ -136,6 +141,7 @@ typedef struct {
 extern Stepper_t motors[6];
 
 void STEWART_init(void);
+
 void stepper_move_const_vel(Stepper_t *m, int32_t steps, uint32_t vel_mm_s, MOTOR_STATE type);
 void stepper_move(Stepper_t *m, uint64_t step_number, uint32_t total_time_ms);
 void stepper_tick(Stepper_t *m);

@@ -19,8 +19,15 @@ void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_fl
 
   if (ext_type == HOME_ENDSTOP) {
     switch (m->motor_state) {
+      case NORMAL_RUNNING:
+        // TODO: If endstops are hit while normal operation is happening
+        // we will likely need to re-home
+        // back off from endstop (depending on which one)
+        // then switch state, then call the home function agian
+      
+        break;
+
       case HOMING_FAST:
-      // case EXTENSION_FAST:
         *(m->CCR) = 0;
         m->timer->CR1 &= ~TIM_CR1_CEN;
         m->timer->CNT = 0;
@@ -29,7 +36,6 @@ void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_fl
         break;
 
       case HOMING_SLOW:
-      // case EXTENSION_SLOW:
         *(m->CCR) = 0;
         m->timer->CR1 &= ~TIM_CR1_CEN;
         m->timer->CNT = 0;
@@ -38,8 +44,6 @@ void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_fl
         break;
 
       case HOMING_SLOW_BACKOFF:
-      // case EXTENSION_SLOW_BACKOFF:
-        // TODO: ZERO POSITION
         *(m->CCR) = 0;
         m->timer->CR1 &= ~TIM_CR1_CEN;
         m->timer->CNT = 0;
@@ -54,6 +58,10 @@ void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_fl
     }
   } else {
     switch (m->motor_state) {
+      case NORMAL_RUNNING:
+
+        break;
+
       case EXTENSION_FAST:
         *(m->CCR) = 0;
         m->timer->CR1 &= ~TIM_CR1_CEN;
@@ -69,7 +77,6 @@ void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_fl
         break;
 
       case EXTENSION_SLOW_BACKOFF:
-        // TODO: ZERO POSITION
         *(m->CCR) = 0;
         m->timer->CR1 &= ~TIM_CR1_CEN;
         m->timer->CNT = 0;
@@ -89,4 +96,19 @@ void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_fl
 void delay_stepper_ms(Stepper_t *m, uint32_t ms) {
   m->delay_time_ms = ms;
   m->motor_state = DELAY;
+}
+
+void read_endstops_pwr_up(Stepper_t *m) {
+  // END STOP PORTS SAME AS MAIN PORT
+  uint8_t home_active = (m->dir_port->IDR & m->home_pin ? 1 : 0);
+  uint8_t limit_active = (m->dir_port->IDR & m->limit_pin ? 1 : 0);
+
+  // If one or the other is active
+  // (hopefully not both ever)
+  if (home_active) {
+    // extend by backoff distance
+    
+  } else if (limit_active) {
+    // retract by backoff distance
+  }
 }

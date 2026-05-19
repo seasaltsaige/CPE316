@@ -14,7 +14,7 @@ Stepper_t motors[6] = {
     { TIM8, &TIM8->CCR1, LEG_Cb_PORT, DIR_PIN_C2, HOME_PIN_C2, LIMIT_PIN_C2 },
 };
 
-void STEWART_init() {
+void CLOCK_init() {
     RCC->AHB2ENR |= RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN | RCC_AHB2ENR_GPIOCEN;
     // so many timers
     // platform has 6 independent steppers, so we need to be able to generate 6 independent PWM waves
@@ -23,8 +23,11 @@ void STEWART_init() {
     RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN | RCC_APB1ENR1_TIM3EN | RCC_APB1ENR1_TIM4EN | RCC_APB1ENR1_TIM5EN | RCC_APB1ENR1_TIM6EN;
     // EXTI interrupts
     RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+    // Enable FPU in coprocesser
     SCB->CPACR |= ((3UL << 10*2) | (3UL << 11*2));
+}
 
+void GPIO_init() {
     // GPIO init, PA0, PA1, PA8, PB4, PB6, PC6
     // set to AF mode
     GPIOA->MODER &= ~(GPIO_MODER_MODE0 | GPIO_MODER_MODE1 | GPIO_MODER_MODE8);
@@ -44,48 +47,7 @@ void STEWART_init() {
     GPIOC->MODER &= ~(GPIO_MODER_MODE0);
     GPIOC->MODER |=  (GPIO_MODER_MODE0_0);
 
-
-    // PA4 - EXTI4
-    // PA5 - EXTI5
-    // PA6 - EXTI6
-    // PA7 - EXTI7
-    // PA1 - EXTI1
-    // PA9 - EXTI9
-
-    // PB14 - EXTI14
-    // PB15 - EXTI15
-    // PB10 - EXTI10
-    // PB11 - EXTI11
-
-    // PC2 - EXTI2
-    // PC3 - EXTI3
-    // are left in reset state for input mode
-    // as they act as the limit switch inputs
-    // Set to pull-down mode
-    GPIOA->PUPDR &= ~(
-        GPIO_PUPDR_PUPD1 | GPIO_PUPDR_PUPD4 | GPIO_PUPDR_PUPD5 |
-        GPIO_PUPDR_PUPD6 | GPIO_PUPDR_PUPD7 | GPIO_PUPDR_PUPD9
-    );
-    GPIOA->PUPDR |= (
-        GPIO_PUPDR_PUPD1_1 | GPIO_PUPDR_PUPD4_1 | GPIO_PUPDR_PUPD5_1 |
-        GPIO_PUPDR_PUPD6_1 | GPIO_PUPDR_PUPD7_1 | GPIO_PUPDR_PUPD9_1
-    );
-    GPIOB->PUPDR &= ~(
-        GPIO_PUPDR_PUPD14 | GPIO_PUPDR_PUPD15 |
-        GPIO_PUPDR_PUPD10 | GPIO_PUPDR_PUPD11
-    );
-    GPIOB->PUPDR |= (
-        GPIO_PUPDR_PUPD14_1 | GPIO_PUPDR_PUPD15_1 |
-        GPIO_PUPDR_PUPD10_1 | GPIO_PUPDR_PUPD11_1
-    );
-    GPIOC->PUPDR &= ~(      
-        GPIO_PUPDR_PUPD2 | GPIO_PUPDR_PUPD3
-    );
-    GPIOC->PUPDR |= (      
-        GPIO_PUPDR_PUPD2_1 | GPIO_PUPDR_PUPD3_1
-    );
-
-        // Set all homing/limit pins as input and pulldown
+    // Set all homing/limit pins as input and pulldown
     GPIOA->MODER &= ~(GPIO_MODER_MODE4 | GPIO_MODER_MODE5 | GPIO_MODER_MODE6 | GPIO_MODER_MODE7 | GPIO_MODER_MODE1 | GPIO_MODER_MODE9);
     GPIOB->MODER &= ~(GPIO_MODER_MODE14 | GPIO_MODER_MODE15 | GPIO_MODER_MODE10 | GPIO_MODER_MODE11);
     GPIOC->MODER &= ~(GPIO_MODER_MODE2 | GPIO_MODER_MODE3);
@@ -99,6 +61,39 @@ void STEWART_init() {
     GPIOC->PUPDR &= ~(GPIO_PUPDR_PUPD2 | GPIO_PUPDR_PUPD3);
     GPIOC->PUPDR |= (GPIO_PUPDR_PUPD2_1 | GPIO_PUPDR_PUPD3_1);
 
+    // Reset all DIR pins to low state, just in case
+    GPIOA->BRR = (GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12);
+    GPIOB->BRR = (GPIO_PIN_0  | GPIO_PIN_1);
+    GPIOC->BRR = (GPIO_PIN_0);
+
+    // High speed output for pwm, not sure if needed, but doesn't
+    // hurt i dont think
+    GPIOA->OSPEEDR |= (GPIO_OSPEEDR_OSPEED0 | GPIO_OSPEEDR_OSPEED1 | GPIO_OSPEEDR_OSPEED8);
+    GPIOB->OSPEEDR |= (GPIO_OSPEEDR_OSPEED4 | GPIO_OSPEEDR_OSPEED6);
+    GPIOC->OSPEEDR |= (GPIO_OSPEEDR_OSPEED6);
+    
+    // Clear alternate function for pins 0 and 8
+    LEG_A_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL0);
+    LEG_A_PORT->AFR[1] &= ~(GPIO_AFRH_AFRH0);
+    // Set pins into PWM AF1
+    LEG_A_PORT->AFR[0] |= (GPIO_AFRL_AFSEL0_0);
+    LEG_A_PORT->AFR[1] |= (GPIO_AFRH_AFSEL8_0);
+
+
+    // Clear alternate functions for pins 4 and 6
+    LEG_B_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL4 | GPIO_AFRL_AFRL6);
+    // Set pins into PWM AF2
+    LEG_B_PORT->AFR[0] |= (GPIO_AFRL_AFSEL4_1 | GPIO_AFRL_AFSEL6_1);
+
+    LEG_Ca_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL2);
+    LEG_Cb_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL6);
+    // AF2 select
+    LEG_Ca_PORT->AFR[0] |= (GPIO_AFRL_AFSEL2_1);
+    // AF3 select
+    LEG_Cb_PORT->AFR[0] |= (GPIO_AFRL_AFSEL6_0 | GPIO_AFRL_AFSEL6_1);
+}
+
+void EXTI_init() {
     // Configure EXTI interrupts for each channel
 
     // EXTI1, 4, 5, 6, 7, and 9 are mapped to Port A
@@ -171,39 +166,10 @@ void STEWART_init() {
         EXTI_PR1_PIF10 | EXTI_PR1_PIF11 |
         EXTI_PR1_PIF14 | EXTI_PR1_PIF15
     );
+}
 
-    // Reset all DIR pins to low state, just in case
-    GPIOA->BRR = (GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12);
-    GPIOB->BRR = (GPIO_PIN_0  | GPIO_PIN_1);
-    GPIOC->BRR = (GPIO_PIN_0);
-
-    // High speed output for pwm, not sure if needed, but doesn't
-    // hurt i dont think
-    GPIOA->OSPEEDR |= (GPIO_OSPEEDR_OSPEED0 | GPIO_OSPEEDR_OSPEED1 | GPIO_OSPEEDR_OSPEED8);
-    GPIOB->OSPEEDR |= (GPIO_OSPEEDR_OSPEED4 | GPIO_OSPEEDR_OSPEED6);
-    GPIOC->OSPEEDR |= (GPIO_OSPEEDR_OSPEED6);
+void TIM_init() {
     
-    // Clear alternate function for pins 0 and 8
-    LEG_A_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL0);
-    LEG_A_PORT->AFR[1] &= ~(GPIO_AFRH_AFRH0);
-    // Set pins into PWM AF1
-    LEG_A_PORT->AFR[0] |= (GPIO_AFRL_AFSEL0_0);
-    LEG_A_PORT->AFR[1] |= (GPIO_AFRH_AFSEL8_0);
-
-
-    // Clear alternate functions for pins 4 and 6
-    LEG_B_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL4 | GPIO_AFRL_AFRL6);
-    // Set pins into PWM AF2
-    LEG_B_PORT->AFR[0] |= (GPIO_AFRL_AFSEL4_1 | GPIO_AFRL_AFSEL6_1);
-
-    LEG_Ca_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL2);
-    LEG_Cb_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL6);
-    // AF2 select
-    LEG_Ca_PORT->AFR[0] |= (GPIO_AFRL_AFSEL2_1);
-    // AF3 select
-    LEG_Cb_PORT->AFR[0] |= (GPIO_AFRL_AFSEL6_0 | GPIO_AFRL_AFSEL6_1);
-
-
     // Set timers into PWM mode
     TIM1->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
     TIM2->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
@@ -244,14 +210,13 @@ void STEWART_init() {
 
     // PSC of 79 to divide 80MHz clock by 80
     // for a timer speed of 1MHz
-    TIM1->PSC = 80 - 1;
-    TIM2->PSC = 80 - 1;
-    TIM3->PSC = 80 - 1;
-    TIM4->PSC = 80 - 1;
-    TIM5->PSC = 80 - 1;
-    TIM8->PSC = 80 - 1;
-
-    TIM6->PSC = 80 - 1;
+    TIM1->PSC = TIM_PSC - 1;
+    TIM2->PSC = TIM_PSC - 1;
+    TIM3->PSC = TIM_PSC - 1;
+    TIM4->PSC = TIM_PSC - 1;
+    TIM5->PSC = TIM_PSC - 1;
+    TIM8->PSC = TIM_PSC - 1;
+    TIM6->PSC = TIM_PSC - 1;
 
     // Defaults (16 bits since some would be truncated otherwise)
     TIM1->ARR = 0xFFFF;
@@ -263,8 +228,11 @@ void STEWART_init() {
 
     // At 1MHz, an ARR of 1000 yields
     // an acceleration frequency of 1ms
-    TIM6->ARR = 1000 - 1;
+    TIM6->ARR = TIM6_FREQ_HZ - 1;
 
+    // CCR value turns PWM 'off'
+    // ARR interrupt sets the pin high,
+    // but then instantly, the CCR sets it low
     TIM1->CCR1 = 0;
     TIM2->CCR1 = 0;
     TIM3->CCR1 = 0;
@@ -298,7 +266,9 @@ void STEWART_init() {
     TIM8->DIER |= (TIM_DIER_UIE);
 
     TIM6->DIER |= (TIM_DIER_UIE);
+}
 
+void ISR_init() {
     // turn on interrupt vectors
     NVIC->ISER[0] |= (
         (1UL << TIM1_UP_TIM16_IRQn) |
@@ -342,12 +312,27 @@ void STEWART_init() {
     
     // enable interrupts in the core
     __enable_irq();
+}
 
-    // Enable timers! yippee
 
-    GPIOA->MODER &= ~(GPIO_MODER_MODE3);
-    GPIOA->MODER |= (GPIO_MODER_MODE3_0);
 
+void STEWART_init() {
+    // Init clocks / config used for the platform
+    CLOCK_init();
+
+    // Init GPIO used
+    GPIO_init();
+
+    // Init EXTI interrupts
+    EXTI_init();
+
+    // Init PWM and time keeper timers
+    TIM_init();
+
+    // Enable ISR in nvic and core
+    ISR_init();
+
+    // Enable tim6 time keeper! yippee
     TIM6->CR1 |= TIM_CR1_CEN;
 }
 
@@ -493,7 +478,7 @@ void home_platform() {
     for (int i = 0; i < NUM_MOTORS; i++) {
         // move down at 20mm/s
         // begin in homing fast state
-        stepper_move_const_vel(&motors[i], -999999, HOMING_FAST_MM_S, HOMING_FAST);
+        stepper_move_const_vel(&motors[i], -9999999, HOMING_FAST_MM_S, HOMING_FAST);
     }
 
     // while all motors have not re-entered idle
@@ -509,26 +494,26 @@ void home_platform() {
                     stepper_move_const_vel(&motors[i], HOMING_BACKOFF_STEPS, HOMING_SLOW_MM_S, HOMING_FAST_BACKOFF);
                     break;
                 case HOMING_FAST_BACKOFF_TRANSITION:
-                    stepper_move_const_vel(&motors[i], -999999, HOMING_SLOW_MM_S, HOMING_SLOW);
+                    stepper_move_const_vel(&motors[i], -9999999, HOMING_SLOW_MM_S, HOMING_SLOW);
                     break;
                 case HOMING_SLOW_LIMIT_TRANSITION:
                     // arbitrary step count. halted once limit switch is cleared
-                    stepper_move_const_vel(&motors[i], 999999, HOMING_SLOW_MM_S, HOMING_SLOW_BACKOFF);
+                    stepper_move_const_vel(&motors[i], 9999999, HOMING_SLOW_MM_S, HOMING_SLOW_BACKOFF);
                    break;
 
                 case HOMING_SLOW_BACKOFF_TRANSITION:
                     motors[i].steps_current = 0;
-                    stepper_move_const_vel(&motors[i], 999999, HOMING_FAST_MM_S, EXTENSION_FAST);
+                    stepper_move_const_vel(&motors[i], 9999999, HOMING_FAST_MM_S, EXTENSION_FAST);
                     break;
 
                 case EXTENSION_FAST_LIMIT_TRANSITION:
                     stepper_move_const_vel(&motors[i], -HOMING_BACKOFF_STEPS, HOMING_SLOW_MM_S, EXTENSION_FAST_BACKOFF);
                     break;
                 case EXTENSION_FAST_BACKOFF_TRANSITION:
-                    stepper_move_const_vel(&motors[i], 999999, HOMING_SLOW_MM_S, EXTENSION_SLOW);
+                    stepper_move_const_vel(&motors[i], 9999999, HOMING_SLOW_MM_S, EXTENSION_SLOW);
                     break;
                 case EXTENSION_SLOW_LIMIT_TRANSITION:
-                    stepper_move_const_vel(&motors[i], -999999, HOMING_SLOW_MM_S, EXTENSION_SLOW_BACKOFF);
+                    stepper_move_const_vel(&motors[i], -9999999, HOMING_SLOW_MM_S, EXTENSION_SLOW_BACKOFF);
                     break;
 
                 case EXTENSION_SLOW_BACKOFF_TRANSITION:

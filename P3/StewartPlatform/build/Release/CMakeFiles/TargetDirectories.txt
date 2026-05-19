@@ -1,6 +1,6 @@
-G:/projects/CPE316/P3/StewartPlatform/build/Release/CMakeFiles/StewartPlatform.dir
-G:/projects/CPE316/P3/StewartPlatform/build/Release/CMakeFiles/edit_cache.dir
-G:/projects/CPE316/P3/StewartPlatform/build/Release/CMakeFiles/rebuild_cache.dir
-G:/projects/CPE316/P3/StewartPlatform/build/Release/cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir
-G:/projects/CPE316/P3/StewartPlatform/build/Release/cmake/stm32cubemx/CMakeFiles/edit_cache.dir
-G:/projects/CPE316/P3/StewartPlatform/build/Release/cmake/stm32cubemx/CMakeFiles/rebuild_cache.dir
+D:/CPE316/P3/StewartPlatform/build/Release/CMakeFiles/StewartPlatform.dir
+D:/CPE316/P3/StewartPlatform/build/Release/CMakeFiles/edit_cache.dir
+D:/CPE316/P3/StewartPlatform/build/Release/CMakeFiles/rebuild_cache.dir
+D:/CPE316/P3/StewartPlatform/build/Release/cmake/stm32cubemx/CMakeFiles/STM32_Drivers.dir
+D:/CPE316/P3/StewartPlatform/build/Release/cmake/stm32cubemx/CMakeFiles/edit_cache.dir
+D:/CPE316/P3/StewartPlatform/build/Release/cmake/stm32cubemx/CMakeFiles/rebuild_cache.dir
