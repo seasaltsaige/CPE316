@@ -399,20 +399,20 @@ void stepper_move(Stepper_t *m, uint64_t step_number, uint32_t total_time_ms) {
     uint64_t half_steps = (distance / 2);
     if (half_steps == 0) half_steps = 1;
 
-    m->ticks_elapsed   = 0;
-    m->total_time_ms   = total_time_ms;
-    m->steps_accel     = half_steps;
-    m->steps_decel     = half_steps;
-    m->steps_total     = distance;
+    m->ticks_elapsed = 0;
+    m->total_time_ms = total_time_ms;
+    m->steps_accel = half_steps;
+    m->steps_decel = half_steps;
+    m->steps_total = distance;
     m->steps_remaining = distance;
-    m->arr_fast        = arr_peak;
-    m->arr_slow        = 0xFFFF;
-    m->arr_current     = 0xFFFF;
-    m->arr_step        = 1;
-    m->motor_state     = NORMAL_RUNNING;
+    m->arr_fast = arr_peak;
+    m->arr_slow = 0xFFFF;
+    m->arr_current = 0xFFFF;
+    m->arr_step = 1;
+    m->motor_state = NORMAL_RUNNING;
 
     m->timer->ARR = 0xFFFF;
-    *(m->CCR)     = 0xFFFF / 2;
+    *(m->CCR) = 0xFFFF / 2;
     m->timer->EGR |= TIM_EGR_UG;
     m->timer->CR1 |= TIM_CR1_CEN;
 }

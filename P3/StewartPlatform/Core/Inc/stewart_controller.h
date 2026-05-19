@@ -8,11 +8,11 @@
 #define STEPS_PER_REV        200
 #define LEAD_SCREW_LEN_MM    300
 #define MM_PER_REV           2
-#define MOVE_TIME_MS         4000
+#define MOVE_TIME_MS         1700
 
 #define HOMING_FAST_MM_S     17
 #define HOMING_SLOW_MM_S     2
-#define HOMING_BACKOFF_STEPS 100
+#define HOMING_BACKOFF_STEPS 80
 #define HOMING_LIMIT_HOLD_MS 300
 
 #define SOFTWARE_STEP_LIMIT 100
