@@ -5,21 +5,26 @@
 #include "stm32l4xx_hal.h"
 #include <stdint.h>
 
-#define STEPS_PER_REV        200
+#define MICRO_STEPS          2
+#define STEPS_PER_REV        (200 * MICRO_STEPS) 
+
+
 #define LEAD_SCREW_LEN_MM    300
 #define MM_PER_REV           2
 #define MOVE_TIME_MS         2000
 
-#define HOMING_FAST_MM_S     17
+#define HOMING_FAST_MM_S     35
 #define HOMING_SLOW_MM_S     2
-#define HOMING_BACKOFF_STEPS 100
+
+#define BACKOFF_REV_CNT      1
+#define HOMING_BACKOFF_STEPS (BACKOFF_REV_CNT * STEPS_PER_REV)
 #define HOMING_LIMIT_HOLD_MS 300
 
-#define SOFTWARE_STEP_LIMIT 100
+#define SOFTWARE_STEP_LIMIT (BACKOFF_REV_CNT * STEPS_PER_REV)
 
 #define MIN_TOP_SPEED_MM_S  15
 
-
+#define SYS_CLK 80000000
 #define TIM_PSC 80
 #define TIM6_FREQ_HZ 1000
 

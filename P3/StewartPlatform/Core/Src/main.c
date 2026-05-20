@@ -191,12 +191,11 @@ int main(void)
   SystemClock_Config();
 
   STEWART_init();
+
+  // stepper_move_const_vel(&motors[0], 1600, 2, NORMAL_RUNNING);
   // Blocking call until all legs have been homed and positioned in starting position
   home_platform();
 
-  while (motors[0].motor_state != IDLE) {};
-
-  stepper_move(&motors[0], (motors[0].MAX_STEPS * 2) / 3, MOVE_TIME_MS);
   while (motors[0].motor_state != IDLE) {};
 
   delay_stepper_ms(&motors[0], 500);
@@ -215,6 +214,12 @@ int main(void)
   while (motors[0].motor_state != IDLE) {};
 
   stepper_move(&motors[0], (motors[0].MAX_STEPS), MOVE_TIME_MS);
+  while (motors[0].motor_state != IDLE) {};
+
+  stepper_move(&motors[0], (motors[0].MAX_STEPS / 8), MOVE_TIME_MS);
+  while (motors[0].motor_state != IDLE) {};
+
+  stepper_move(&motors[0], (motors[0].MAX_STEPS * 5 / 8), MOVE_TIME_MS);
   while (motors[0].motor_state != IDLE) {};
 
   while (1)

@@ -339,6 +339,9 @@ void STEWART_init() {
 void stepper_move(Stepper_t *m, uint64_t step_number, uint32_t total_time_ms) {
     if (m->steps_current == step_number) return;
 
+    if (step_number < SOFTWARE_STEP_LIMIT) step_number = SOFTWARE_STEP_LIMIT;
+    else if (step_number > (m->MAX_STEPS - SOFTWARE_STEP_LIMIT)) step_number = (m->MAX_STEPS - SOFTWARE_STEP_LIMIT);
+
     // calculate direction and step distance to travel
     uint64_t distance = 0;
     if (step_number < m->steps_current) {
@@ -449,18 +452,11 @@ void stepper_accel(Stepper_t *m) {
         // in range from 0 to 2pi (in terms of ticks calculate above)
         float v_norm = (1.0f - cosf(2 * M_PI * t_ticks)) / 2;
 
-        uint32_t arr;
-        if (v_norm < 0.001f) {
-            // if the speed is too small, just set it 
-            // at our max arr value (16 bit limit)
-            arr = 0xFFFF;
-        } else {
-            // otherwise, calculate the arr value based on the 
-            // fastest calculated arr value
-            arr = (uint32_t)((float)m->arr_fast / v_norm);
-            if (arr > 0xFFFF) arr = 0xFFFF;
-            if (arr < m->arr_fast) arr = m->arr_fast;
-        }
+        uint32_t arr = (uint32_t)((float)m->arr_fast / v_norm);
+
+
+        if (arr > 0xFFFF) arr = 0xFFFF;
+        else if (arr < m->arr_fast) arr = m->arr_fast;
 
         m->arr_current = arr;
         m->ticks_elapsed++;
@@ -563,6 +559,9 @@ void stepper_move_const_vel(Stepper_t *m, int32_t steps, uint32_t vel_mm_s, MOTO
 
 void stepper_goto_step(Stepper_t *m, uint64_t step_number, uint32_t vel_mm_s) {
     if (m->steps_current == step_number) return;
+
+    if (step_number < SOFTWARE_STEP_LIMIT) step_number = SOFTWARE_STEP_LIMIT;
+    else if (step_number > (m->MAX_STEPS - SOFTWARE_STEP_LIMIT)) step_number = (m->MAX_STEPS - SOFTWARE_STEP_LIMIT);
 
     uint64_t distance = 0;
     int8_t dir = 1;
