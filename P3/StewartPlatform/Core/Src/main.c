@@ -136,8 +136,11 @@ void EXTI3_IRQHandler() {
 
 // LEG A1 HOME END STOP
 void EXTI4_IRQHandler() {
-  if (EXTI->PR1 & EXTI_PR1_PIF4)
+  if (EXTI->PR1 & EXTI_PR1_PIF4) {
+    
     handle_endstop(&motors[0], HOME_ENDSTOP, EXTI_PR1_PIF4); 
+
+  }
 }
 
 void EXTI9_5_IRQHandler() {
@@ -207,7 +210,7 @@ int main(void)
   delay_stepper_ms(&motors[0], 500);
   while (motors[0].motor_state != IDLE) {};
 
-  stepper_move(&motors[0], (motors[0].MAX_STEPS * 5) / 6, MOVE_TIME_MS);
+  stepper_move(&motors[0], (motors[0].MAX_STEPS * 3) / 6, MOVE_TIME_MS);
   while (motors[0].motor_state != IDLE) {};
 
   delay_stepper_ms(&motors[0], 500);

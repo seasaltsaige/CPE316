@@ -5,13 +5,13 @@
 #include "stm32l4xx_hal.h"
 #include <stdint.h>
 
-#define MICRO_STEPS          1
+#define MICRO_STEPS          8
 #define STEPS_PER_REV        (200 * MICRO_STEPS) 
 
 
 #define LEAD_SCREW_LEN_MM    300
 #define MM_PER_REV           2
-#define MOVE_TIME_MS         2000
+#define MOVE_TIME_MS         2750
 
 #define HOMING_FAST_MM_S     35
 #define HOMING_SLOW_MM_S     2

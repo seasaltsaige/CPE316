@@ -444,14 +444,14 @@ void stepper_accel(Stepper_t *m) {
 
     if (m->arr_step != 0) {
 
-        float t_ticks = (float)m->ticks_elapsed / (float)m->total_time_ms;
+        float t_ticks = ((float)m->ticks_elapsed) / (float)m->total_time_ms;
 
         // in theory this should never be the case, but just in case
         if (t_ticks > 1.0f) t_ticks = 1.0f;
 
         // Calculate velocity based on cosine wave
         // in range from 0 to 2pi (in terms of ticks calculate above)
-        float32_t v_norm = (1.0f - arm_cos_f32(2 * M_PI * t_ticks)) / 2;
+        float32_t v_norm = (1.0f - arm_cos_f32(M_PI * 2 * t_ticks)) / 2;
         // float t2 = t_ticks * t_ticks;
         // float t3 = t2 * t_ticks;
         // float t4 = t3 * t_ticks;
