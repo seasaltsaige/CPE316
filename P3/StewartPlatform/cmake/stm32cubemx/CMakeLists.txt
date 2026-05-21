@@ -15,6 +15,7 @@ set(MX_Include_Dirs
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/STM32L4xx_HAL_Driver/Inc/Legacy
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/CMSIS/Device/ST/STM32L4xx/Include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/CMSIS/Include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Drivers/CMSIS/DSP/Include
 )
 
 # STM32CubeMX generated application sources

@@ -3,7 +3,8 @@
 #include "stm32l4xx_hal.h"
 #include <stdint.h>
 #include <stdio.h>
-#include <math.h>
+// #include <math.h>
+#include <arm_math.h>
 
 Stepper_t motors[6] = {
     { TIM1, &TIM1->CCR1, LEG_A_PORT, DIR_PIN_A1, HOME_PIN_A1, LIMIT_PIN_A1, EXTI_IMR1_IM4, EXTI_IMR1_IM5 },
@@ -450,7 +451,11 @@ void stepper_accel(Stepper_t *m) {
 
         // Calculate velocity based on cosine wave
         // in range from 0 to 2pi (in terms of ticks calculate above)
-        float v_norm = (1.0f - cosf(2 * M_PI * t_ticks)) / 2;
+        // float v_norm = (1.0f - cosf(2 * M_PI * t_ticks)) / 2;
+        float t2 = t_ticks * t_ticks;
+        float t3 = t2 * t_ticks;
+        float t4 = t3 * t_ticks;
+        float v_norm = ((30 * t4) - (60 * t3) + (30 * t2)) / 1.875f; 
 
         uint32_t arr = (uint32_t)((float)m->arr_fast / v_norm);
 

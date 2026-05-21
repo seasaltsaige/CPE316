@@ -5,7 +5,7 @@
 #include "stm32l4xx_hal.h"
 #include <stdint.h>
 
-#define MICRO_STEPS          2
+#define MICRO_STEPS          1
 #define STEPS_PER_REV        (200 * MICRO_STEPS) 
 
 
@@ -142,6 +142,20 @@ typedef struct {
     volatile uint32_t arr_slow;         
     volatile uint32_t arr_step;         
 } Stepper_t;
+
+typedef struct {
+    float x;
+    float y;
+    float z;
+} Vec3_t;
+
+typedef struct {
+    Vec3_t base[6]; // connection points from base reference
+    Vec3_t platform[6]; // connection points from platform reference
+
+    float leg_lengths[6];
+
+} StewartPlatform_t;
 
 extern Stepper_t motors[6];
 
