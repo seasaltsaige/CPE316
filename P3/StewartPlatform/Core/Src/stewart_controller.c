@@ -451,7 +451,7 @@ void stepper_accel(Stepper_t *m) {
 
         // Calculate velocity based on cosine wave
         // in range from 0 to 2pi (in terms of ticks calculate above)
-        float32_t v_norm = (1.0f - arm_cos_f32(M_PI * 2 * t_ticks)) / 2;
+        float32_t v_norm = (1.0f - arm_cos_f32(M_PI * 2.0f * t_ticks)) / 2.0f;
         // float t2 = t_ticks * t_ticks;
         // float t3 = t2 * t_ticks;
         // float t4 = t3 * t_ticks;
@@ -486,8 +486,8 @@ void home_platform() {
 
     // while all motors have not re-entered idle
     while (
-        (motors[0].motor_state != IDLE && motors[0].motor_state != NORMAL_RUNNING) ||
-        (motors[1].motor_state != IDLE && motors[1].motor_state != NORMAL_RUNNING )
+        (motors[0].motor_state != IDLE && motors[0].motor_state != NORMAL_RUNNING) //||
+        // (motors[1].motor_state != IDLE && motors[1].motor_state != NORMAL_RUNNING )
 
     ) {
         for (int i = 0; i < NUM_MOTORS; i++) {

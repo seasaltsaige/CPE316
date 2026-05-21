@@ -15,4 +15,7 @@ void delay_stepper_ms(Stepper_t *m, uint32_t ms);
 void read_endstops_pwr_up(Stepper_t *m);
 
 
+uint8_t poll_motors_busy();
+
+
 #endif

@@ -11,7 +11,7 @@
 
 #define LEAD_SCREW_LEN_MM    300
 #define MM_PER_REV           2
-#define MOVE_TIME_MS         2750
+#define MOVE_TIME_MS         3000
 
 #define HOMING_FAST_MM_S     35
 #define HOMING_SLOW_MM_S     2
@@ -142,20 +142,6 @@ typedef struct {
     volatile uint32_t arr_slow;         
     volatile uint32_t arr_step;         
 } Stepper_t;
-
-typedef struct {
-    float x;
-    float y;
-    float z;
-} Vec3_t;
-
-typedef struct {
-    Vec3_t base[6]; // connection points from base reference
-    Vec3_t platform[6]; // connection points from platform reference
-
-    float leg_lengths[6];
-
-} StewartPlatform_t;
 
 extern Stepper_t motors[6];
 

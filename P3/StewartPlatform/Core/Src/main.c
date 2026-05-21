@@ -137,7 +137,7 @@ void EXTI3_IRQHandler() {
 // LEG A1 HOME END STOP
 void EXTI4_IRQHandler() {
   if (EXTI->PR1 & EXTI_PR1_PIF4) {
-    
+
     handle_endstop(&motors[0], HOME_ENDSTOP, EXTI_PR1_PIF4); 
 
   }
@@ -195,35 +195,48 @@ int main(void)
 
   STEWART_init();
 
-  // stepper_move_const_vel(&motors[0], 1600, 2, NORMAL_RUNNING);
+
+  // Reads endstops on power up to check if any are pressed
+  // if any are pressed, the motors will back off slowly from the end stop before beginning the homing routine
+  for (uint8_t i = 0; i < 6; i++)
+    read_endstops_pwr_up(&motors[i]);
+
+  while (poll_motors_busy()) {};
+
   // Blocking call until all legs have been homed and positioned in starting position
   home_platform();
+  while (poll_motors_busy()) {};
 
-  while (motors[0].motor_state != IDLE) {};
 
+  // Test sequence of moves
   delay_stepper_ms(&motors[0], 500);
-  while (motors[0].motor_state != IDLE) {};
+  while (poll_motors_busy()) {};
 
   stepper_move(&motors[0], 0, MOVE_TIME_MS);
-  while (motors[0].motor_state != IDLE) {};
+    while (poll_motors_busy()) {};
 
   delay_stepper_ms(&motors[0], 500);
-  while (motors[0].motor_state != IDLE) {};
+  while (poll_motors_busy()) {};
+
 
   stepper_move(&motors[0], (motors[0].MAX_STEPS * 3) / 6, MOVE_TIME_MS);
-  while (motors[0].motor_state != IDLE) {};
+  while (poll_motors_busy()) {};
+
 
   delay_stepper_ms(&motors[0], 500);
-  while (motors[0].motor_state != IDLE) {};
+  while (poll_motors_busy()) {};
+
 
   stepper_move(&motors[0], (motors[0].MAX_STEPS), MOVE_TIME_MS);
-  while (motors[0].motor_state != IDLE) {};
+  while (poll_motors_busy()) {};
+
 
   stepper_move(&motors[0], (motors[0].MAX_STEPS / 8), MOVE_TIME_MS);
-  while (motors[0].motor_state != IDLE) {};
+  while (poll_motors_busy()) {};
+
 
   stepper_move(&motors[0], (motors[0].MAX_STEPS * 5 / 8), MOVE_TIME_MS);
-  while (motors[0].motor_state != IDLE) {};
+  while (poll_motors_busy()) {};
 
   while (1)
   {

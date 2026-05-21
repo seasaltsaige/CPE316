@@ -107,8 +107,17 @@ void read_endstops_pwr_up(Stepper_t *m) {
   // (hopefully not both ever)
   if (home_active) {
     // extend by backoff distance
+    stepper_move_const_vel(m, 2 * HOMING_BACKOFF_STEPS, 5, NORMAL_RUNNING);
     
   } else if (limit_active) {
     // retract by backoff distance
+    stepper_move_const_vel(m, -2 * HOMING_BACKOFF_STEPS, 5, NORMAL_RUNNING);
   }
+}
+
+
+uint8_t poll_motors_busy() {
+  return (motors[0].motor_state != IDLE && motors[1].motor_state != IDLE && 
+          motors[2].motor_state != IDLE && motors[3].motor_state != IDLE &&
+          motors[4].motor_state != IDLE && motors[5].motor_state != IDLE) ? 1 : 0;
 }
