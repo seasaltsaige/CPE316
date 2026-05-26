@@ -26,6 +26,12 @@ void Stop2Mode();
 
 void BusyWork();
 
+
+void RTC_WKUP_IRQHandler(void) {
+  
+}
+
+
 // SLEEP_TYPE = 0 | Normal
 // SLEEP_TYPE = 1 | Sleep Mode
 // SLEEP_TYPE = 2 | Stop 2
