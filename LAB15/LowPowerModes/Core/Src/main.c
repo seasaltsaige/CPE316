@@ -16,7 +16,10 @@
   ******************************************************************************
   */
 #include "main.h"
+#include "cmsis_gcc.h"
 #include "stm32l476xx.h"
+#include "stm32l4xx_hal.h"
+#include "stm32l4xx_hal_pwr.h"
 
 void SystemClock_Config(void);
 void NormalMode();
@@ -35,12 +38,15 @@ void RTC_WKUP_IRQHandler(void) {
   EXTI->PR1 |= EXTI_PR1_PIF20;
 }
 
+// Used to wake up sleep mode every 5 seconds
+void TIM2_IRQHandler() {
+  TIM2->SR &= ~TIM_SR_UIF;
+}
 
 // SLEEP_TYPE = 0 | Normal
 // SLEEP_TYPE = 1 | Sleep Mode
 // SLEEP_TYPE = 2 | Stop 2
-#define SLEEP_TYPE 0
-
+#define SLEEP_TYPE 2
 
 int main(void)
 {
@@ -49,12 +55,7 @@ int main(void)
   SystemClock_Config();
 
   // Ensure peripheral clocks are disabled for testing
-  RCC->AHB2ENR &= ~(
-    RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN |
-    RCC_AHB2ENR_GPIOCEN | RCC_AHB2ENR_GPIODEN | 
-    RCC_AHB2ENR_GPIOEEN | RCC_AHB2ENR_GPIOFEN | 
-    RCC_AHB2ENR_GPIOGEN | RCC_AHB2ENR_GPIOHEN
-  );
+  RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN;
 
   if (SLEEP_TYPE == 0) {
     NormalMode();
@@ -62,30 +63,41 @@ int main(void)
     SleepMode();
   } else if (SLEEP_TYPE == 2) {
     Stop2Mode();
-  } else
-    // ... shouldn't get here
-    while (1) {};
+
+  }
+
 }
 
 void NormalMode() {
-  while (1) { __NOP(); };
+  while (1) { BusyWork(); }
 }
 
+// Wake every 5 seconds using tim2 as an interrupt generator
 void SleepMode() {
-  SCB->SCR &= ~(SCB_SCR_SLEEPDEEP_Msk); 
-  // no HAL_Delay!
-  SysTick->CTRL &= ~(SysTick_CTRL_ENABLE_Msk); // disable systick so light sleep isnt woken by tick
-  Stop2_RTC_Config(); // configure rtc for wake (reused for simplicity)
-                      // most of the logic in that fn is not used for sleep mode
-  while (1) {
-    BusyWork();
+  TIM2->PSC = 4;
+  TIM2->ARR = (32000000) - 1;
+
+  NVIC->ISER[0] |= (1 << TIM2_IRQn);
+
+  TIM2->DIER |= TIM_DIER_UIE;
+  TIM2->CR1 |= TIM_CR1_CEN;
+  TIM2->SR &= ~(TIM_SR_UIF);
+
+  __enable_irq();
+
+  while (1) {    
+    SysTick->CTRL &= ~(SysTick_CTRL_ENABLE_Msk); // disable systick so light sleep isnt woken by tick
     __WFI();
-  };
+    SysTick->CTRL |= (SysTick_CTRL_ENABLE_Msk); // enable systick so light sleep isnt woken by tick
+    BusyWork();
+    HAL_Delay(500);
+  }
 }
 
 void Stop2_RTC_Config() {
   // Unlock backup domain
   RCC->APB1ENR1 |= RCC_APB1ENR1_PWREN;
+  PWR->CR1 &= ~(PWR_CR1_LPR);
   PWR->CR1 |= PWR_CR1_DBP;
   while (!(PWR->CR1 & PWR_CR1_DBP)) {};
 
@@ -98,6 +110,8 @@ void Stop2_RTC_Config() {
   RCC->BDCR &= ~(RCC_BDCR_RTCSEL);
   RCC->BDCR |= (RCC_BDCR_RTCSEL_1 | RCC_BDCR_RTCEN);
 
+
+  // RTC IS USED To WAKE EVERY 5 SECONDS FROM DEEP SLEEP
   // write protection key sequence
   // stm32l47xxx ref manual page 1232 (section 38.3.7)
   // two byte sequence
@@ -107,17 +121,17 @@ void Stop2_RTC_Config() {
   RTC->CR &= ~(RTC_CR_WUTE);
   while (!(RTC->ISR & RTC_ISR_WUTWF)) {};
 
-  // Set wakeup clk sel to ck_spre
+  // // Set wakeup clk sel to ck_spre
   RTC->CR &= ~(RTC_CR_WUCKSEL);
   RTC->CR |= (RTC_CR_WUCKSEL_2);
 
-  // Set wake timer to 5 seconds (based on 1hz clk sel above)
+  // // Set wake timer to 5 seconds (based on 1hz clk sel above)
   RTC->WUTR = 4; // (WUTR + 1)
 
-  // re-enable wakeup timer + irq
+  // // re-enable wakeup timer + irq
   RTC->CR |= (RTC_CR_WUTE | RTC_CR_WUTIE);
 
-  // write to WPR; re-enable write protection
+  // // write to WPR; re-enable write protection
   RTC->WPR = 0xFF;
 
   // bit 20 for rtc wakeup timer
@@ -142,12 +156,7 @@ void Stop2Mode() {
   while (1) {
     BusyWork();
     PWR->SCR |= PWR_SCR_CWUF;
-
-    __DSB();
-    __ISB();
     __WFI();
-
-    SystemClock_Config();
   }
 }
 

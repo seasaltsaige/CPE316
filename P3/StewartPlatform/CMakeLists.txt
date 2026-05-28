@@ -47,8 +47,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     Core/Src/stewart_controller.c
     Core/Src/helper.c
-    Core/Src/IK/stewart_ik.c
-    Core/Src/IK/stewart_ik_path.c
+    # Core/Src/IK/stewart_ik.c
+    # Core/Src/IK/stewart_ik_path.c
 )
 
 # Add include paths

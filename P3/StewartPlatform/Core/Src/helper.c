@@ -117,7 +117,7 @@ void read_endstops_pwr_up(Stepper_t *m) {
 
 
 uint8_t poll_motors_busy() {
-  return (motors[0].motor_state != IDLE && motors[1].motor_state != IDLE && 
-          motors[2].motor_state != IDLE && motors[3].motor_state != IDLE &&
-          motors[4].motor_state != IDLE && motors[5].motor_state != IDLE) ? 1 : 0;
+  return (motors[0].motor_state != IDLE || motors[1].motor_state != IDLE || 
+          motors[2].motor_state != IDLE || motors[3].motor_state != IDLE ||
+          motors[4].motor_state != IDLE || motors[5].motor_state != IDLE) ? 1 : 0;
 }
