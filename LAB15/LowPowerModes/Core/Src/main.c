@@ -28,7 +28,11 @@ void BusyWork();
 
 
 void RTC_WKUP_IRQHandler(void) {
-  
+  RTC->WPR = 0xCA;
+  RTC->WPR = 0x53;
+  RTC->ISR &= ~(RTC_ISR_WUTF);
+  RTC->WPR = 0xFF;
+  EXTI->PR1 |= EXTI_PR1_PIF20;
 }
 
 
@@ -53,13 +57,13 @@ int main(void)
   );
 
   if (SLEEP_TYPE == 0) {
-    
+    NormalMode();
   } else if (SLEEP_TYPE == 1) {
-
+    SleepMode();
   } else if (SLEEP_TYPE == 2) {
-
+    Stop2Mode();
   } else
-    // ...
+    // ... shouldn't get here
     while (1) {};
 }
 
@@ -68,8 +72,15 @@ void NormalMode() {
 }
 
 void SleepMode() {
-  SCB->SCR &= ~(SCB_SCR_SLEEPDEEP_Msk);
-  while (1) { __WFI(); };
+  SCB->SCR &= ~(SCB_SCR_SLEEPDEEP_Msk); 
+  // no HAL_Delay!
+  SysTick->CTRL &= ~(SysTick_CTRL_ENABLE_Msk); // disable systick so light sleep isnt woken by tick
+  Stop2_RTC_Config(); // configure rtc for wake (reused for simplicity)
+                      // most of the logic in that fn is not used for sleep mode
+  while (1) {
+    BusyWork();
+    __WFI();
+  };
 }
 
 void Stop2_RTC_Config() {
@@ -119,6 +130,25 @@ void Stop2_RTC_Config() {
   NVIC->ISER[0] |= (1 << RTC_WKUP_IRQn);
 
   __enable_irq();
+}
+
+void Stop2Mode() {
+  PWR->CR1 &= ~(PWR_CR1_LPMS);
+  PWR->CR1 |= PWR_CR1_LPMS_STOP2;
+
+  SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+  Stop2_RTC_Config();
+
+  while (1) {
+    BusyWork();
+    PWR->SCR |= PWR_SCR_CWUF;
+
+    __DSB();
+    __ISB();
+    __WFI();
+
+    SystemClock_Config();
+  }
 }
 
 
