@@ -475,7 +475,7 @@ void stepper_accel(Stepper_t *m) {
 
 
 void home_platform() {
-    const uint8_t NUM_MOTORS = 3; 
+    const uint8_t NUM_MOTORS = 6; 
     // Loop through motors
     // todo: add rest of motors
     for (int i = 0; i < NUM_MOTORS; i++) {
@@ -488,9 +488,10 @@ void home_platform() {
     while (
         (motors[0].motor_state != IDLE && motors[0].motor_state != NORMAL_RUNNING) ||
         (motors[1].motor_state != IDLE && motors[1].motor_state != NORMAL_RUNNING) || 
-        (motors[2].motor_state != IDLE && motors[1].motor_state != NORMAL_RUNNING)
-
-
+        (motors[2].motor_state != IDLE && motors[2].motor_state != NORMAL_RUNNING) ||
+        (motors[0].motor_state != IDLE && motors[3].motor_state != NORMAL_RUNNING) ||
+        (motors[1].motor_state != IDLE && motors[4].motor_state != NORMAL_RUNNING) || 
+        (motors[2].motor_state != IDLE && motors[5].motor_state != NORMAL_RUNNING)
     ) {
         for (int i = 0; i < NUM_MOTORS; i++) {
             switch (motors[i].motor_state) {

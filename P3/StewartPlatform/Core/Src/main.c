@@ -207,51 +207,49 @@ int main(void)
   home_platform();
   while (poll_motors_busy()) {};
 
-
   // Test sequence of moves
   delay_stepper_ms(&motors[0], 500);
   delay_stepper_ms(&motors[1], 500);
   while (poll_motors_busy()) {};
 
-  stepper_move(&motors[0], 0, MOVE_TIME_MS);
-  stepper_move(&motors[1], 0, MOVE_TIME_MS);
-
-    while (poll_motors_busy()) {};
-
-  delay_stepper_ms(&motors[0], 500);
-  delay_stepper_ms(&motors[1], 500);
-
+  for (uint8_t i = 0; i < 6; i++)
+    stepper_move(&motors[i], (motors[i].MAX_STEPS / 2), MOVE_TIME_MS);
   while (poll_motors_busy()) {};
 
+  // delay_stepper_ms(&motors[0], 500);
+  // delay_stepper_ms(&motors[1], 500);
 
-  stepper_move(&motors[0], (motors[0].MAX_STEPS * 3) / 6, MOVE_TIME_MS);
-  stepper_move(&motors[1], (motors[0].MAX_STEPS * 3) / 6, MOVE_TIME_MS);
-
-  while (poll_motors_busy()) {};
-
-
-  delay_stepper_ms(&motors[0], 500);
-  delay_stepper_ms(&motors[1], 500);
-
-  while (poll_motors_busy()) {};
+  // while (poll_motors_busy()) {};
 
 
-  stepper_move(&motors[0], (motors[0].MAX_STEPS), MOVE_TIME_MS);
-  stepper_move(&motors[1], (motors[0].MAX_STEPS), MOVE_TIME_MS);
+  // stepper_move(&motors[0], (motors[0].MAX_STEPS * 3) / 6, MOVE_TIME_MS);
+  // stepper_move(&motors[1], (motors[0].MAX_STEPS * 3) / 6, MOVE_TIME_MS);
 
-  while (poll_motors_busy()) {};
-
-
-  stepper_move(&motors[0], (motors[0].MAX_STEPS / 8), MOVE_TIME_MS);
-  stepper_move(&motors[1], (motors[0].MAX_STEPS / 8), MOVE_TIME_MS);
-
-  while (poll_motors_busy()) {};
+  // while (poll_motors_busy()) {};
 
 
-  stepper_move(&motors[0], (motors[0].MAX_STEPS * 5 / 8), MOVE_TIME_MS);
-  stepper_move(&motors[1], (motors[0].MAX_STEPS * 5 / 8), MOVE_TIME_MS);
+  // delay_stepper_ms(&motors[0], 500);
+  // delay_stepper_ms(&motors[1], 500);
 
-  while (poll_motors_busy()) {};
+  // while (poll_motors_busy()) {};
+
+
+  // stepper_move(&motors[0], (motors[0].MAX_STEPS), MOVE_TIME_MS);
+  // stepper_move(&motors[1], (motors[0].MAX_STEPS), MOVE_TIME_MS);
+
+  // while (poll_motors_busy()) {};
+
+
+  // stepper_move(&motors[0], (motors[0].MAX_STEPS / 8), MOVE_TIME_MS);
+  // stepper_move(&motors[1], (motors[0].MAX_STEPS / 8), MOVE_TIME_MS);
+
+  // while (poll_motors_busy()) {};
+
+
+  // stepper_move(&motors[0], (motors[0].MAX_STEPS * 5 / 8), MOVE_TIME_MS);
+  // stepper_move(&motors[1], (motors[0].MAX_STEPS * 5 / 8), MOVE_TIME_MS);
+
+  // while (poll_motors_busy()) {};
 
   while (1)
   {
