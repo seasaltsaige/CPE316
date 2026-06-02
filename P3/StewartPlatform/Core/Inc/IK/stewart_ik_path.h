@@ -66,7 +66,7 @@ PathSeg_t segment_linear(Pose_t start, Pose_t end, float dur, float accel, float
 PathSeg_t segment_ellipse(Pose_t start, float cx, float cy, float rx, float ry, float tilt, float revs_per_sec, int looping);
 PathSeg_t segment_catmull(Pose_t *points, uint8_t count, float dur, float accel, float decel);
 
-Pose_t path_segment_evalutate(cosnt PathSeg_t *segment);
+Pose_t path_segment_evalutate(const PathSeg_t *segment);
 
 // path scheduler/move queue
 

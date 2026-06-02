@@ -39,12 +39,12 @@ typedef struct {
 
 
 static inline Vec3_t mat3_mul_vec3(Mat3_t *mat, Vec3_t vec) {
-    Vec3_t vec = {
+    Vec3_t vec_ret = {
         .x = ((mat->m[0][0] * vec.x) + (mat->m[0][1] * vec.y) + (mat->m[0][2] * vec.z)),
         .y = ((mat->m[1][0] * vec.x) + (mat->m[1][1] * vec.y) + (mat->m[1][2] * vec.z)),
         .z = ((mat->m[2][0] * vec.x) + (mat->m[2][1] * vec.y) + (mat->m[2][2] * vec.z)),
     };
-    return vec;
+    return vec_ret;
 }
 
 // euler_angles: x = roll, y = pitch, z = yaw
