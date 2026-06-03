@@ -9,31 +9,34 @@ int main(void)
   HAL_Init();
   SystemClock_Config();
 
-  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN | RCC_AHB2ENR_ADCEN);
+  RCC->AHB2ENR |= (RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN);
   RCC->APB2ENR |= (RCC_APB2ENR_SYSCFGEN);
 
   // PB2 = analog, PA5 = output
   GPIOA->MODER &= ~(GPIO_MODER_MODE5);
   GPIOA->MODER |= (GPIO_MODER_MODE5_0);
 
-  GPIOB->MODER &= ~(GPIO_MODER_MODE2 | GPIO_MODER_MODE4);
-  GPIOB->MODER |= (GPIO_MODER_MODE2_0 | GPIO_MODER_MODE2_1 | GPIO_MODER_MODE4_0 | GPIO_MODER_MODE4_1);
+  GPIOB->MODER &= ~(GPIO_MODER_MODE2);
+  GPIOB->MODER |= (GPIO_MODER_MODE2_0 | GPIO_MODER_MODE2_1);
 
   // enable adc vref
   ADC123_COMMON->CCR |= (ADC_CCR_VREFEN);
+  // wait for it to turn on, probably WAY overkill time wise
+  // but also 5ms is still like nothing to a human
   HAL_Delay(5);
-  
-  COMP1->CSR |= (COMP_CSR_INMSEL_1 | COMP_CSR_POLARITY | COMP_CSR_EN); // 3/4 vref, pb2 inverted (below 3/4), enable
-  COMP2->CSR |= (COMP_CSR_INMSEL_0 | COMP_CSR_WINMODE | COMP_CSR_EN); // 1/2 vref, non-inverted (above 1/2), window mode w/ comp1, enable
 
-  // GPIOA->ODR ^= GPIO_PIN_5;
+  // inmsel = 010 = 3/4 vref, PB2, inverted (below 3/4), enable dividers (vref), enable
+  COMP1->CSR |= (COMP_CSR_INMSEL_1 | COMP_CSR_INPSEL | COMP_CSR_POLARITY | COMP_CSR_BRGEN | COMP_CSR_SCALEN | COMP_CSR_EN); 
+  // inmsel = 001 = 1/2 vref, non-inverted (above 1/2), window mode w/ comp1, enable dividers (vref), enable
+  COMP2->CSR |= (COMP_CSR_INMSEL_0 | COMP_CSR_WINMODE | COMP_CSR_BRGEN | COMP_CSR_SCALEN | COMP_CSR_EN); 
   while (1)
   {
-
+    // if in window, enable gpio PA5
     if ((COMP1->CSR & COMP_CSR_VALUE) && (COMP2->CSR & COMP_CSR_VALUE))
-        GPIOA->ODR |=  GPIO_PIN_5;
-    else
-        GPIOA->ODR &= ~GPIO_PIN_5;
+      GPIOA->ODR |= (GPIO_PIN_5);
+    // otherwise turn it off
+    else 
+      GPIOA->ODR &= ~(GPIO_PIN_5);
 
   }
 }
