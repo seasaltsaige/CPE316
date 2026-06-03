@@ -7,11 +7,11 @@
 #include <arm_math.h>
 
 Stepper_t motors[6] = {
-    { TIM1, &TIM1->CCR1, LEG_A_PORT, DIR_PIN_A1, HOME_PIN_A1, LIMIT_PIN_A1, EXTI_IMR1_IM4, EXTI_IMR1_IM5 },
+    { TIM1, &TIM1->CCR1, LEG_A_PORT, DIR_PIN_A1, HOME_PIN_A1, LIMIT_PIN_A1 },
     { TIM2, &TIM2->CCR1, LEG_A_PORT, DIR_PIN_A2, HOME_PIN_A2, LIMIT_PIN_A2 },
     { TIM3, &TIM3->CCR1, LEG_B_PORT, DIR_PIN_B1, HOME_PIN_B1, LIMIT_PIN_B1 },
     { TIM4, &TIM4->CCR1, LEG_B_PORT, DIR_PIN_B2, HOME_PIN_B2, LIMIT_PIN_B2 },
-    { TIM5, &TIM5->CCR2, LEG_Ca_PORT, DIR_PIN_C1, HOME_PIN_C1, LIMIT_PIN_C1 },
+    { TIM5, &TIM5->CCR3, LEG_Ca_PORT, DIR_PIN_C1, HOME_PIN_C1, LIMIT_PIN_C1 },
     { TIM8, &TIM8->CCR1, LEG_Cb_PORT, DIR_PIN_C2, HOME_PIN_C2, LIMIT_PIN_C2 },
 };
 
@@ -29,10 +29,10 @@ void CLOCK_init() {
 }
 
 void GPIO_init() {
-    // GPIO init, PA0, PA1, PA8, PB4, PB6, PC6
+    // GPIO init, PA0, PA8 | PB4, PB6 | PA2, PC6
     // set to AF mode
-    GPIOA->MODER &= ~(GPIO_MODER_MODE0 | GPIO_MODER_MODE1 | GPIO_MODER_MODE8);
-    GPIOA->MODER |=  (GPIO_MODER_MODE0_1 | GPIO_MODER_MODE1_1 | GPIO_MODER_MODE8_1);
+    GPIOA->MODER &= ~(GPIO_MODER_MODE0 | GPIO_MODER_MODE2 | GPIO_MODER_MODE8);
+    GPIOA->MODER |=  (GPIO_MODER_MODE0_1 | GPIO_MODER_MODE2_1 | GPIO_MODER_MODE8_1);
     GPIOB->MODER &= ~(GPIO_MODER_MODE4 | GPIO_MODER_MODE6);
     GPIOB->MODER |=  (GPIO_MODER_MODE4_1 | GPIO_MODER_MODE6_1);
     GPIOC->MODER &= ~(GPIO_MODER_MODE6);
@@ -69,7 +69,7 @@ void GPIO_init() {
 
     // High speed output for pwm, not sure if needed, but doesn't
     // hurt i dont think
-    GPIOA->OSPEEDR |= (GPIO_OSPEEDR_OSPEED0 | GPIO_OSPEEDR_OSPEED1 | GPIO_OSPEEDR_OSPEED8);
+    GPIOA->OSPEEDR |= (GPIO_OSPEEDR_OSPEED0 | GPIO_OSPEEDR_OSPEED2 | GPIO_OSPEEDR_OSPEED8);
     GPIOB->OSPEEDR |= (GPIO_OSPEEDR_OSPEED4 | GPIO_OSPEEDR_OSPEED6);
     GPIOC->OSPEEDR |= (GPIO_OSPEEDR_OSPEED6);
     
@@ -86,8 +86,11 @@ void GPIO_init() {
     // Set pins into PWM AF2
     LEG_B_PORT->AFR[0] |= (GPIO_AFRL_AFSEL4_1 | GPIO_AFRL_AFSEL6_1);
 
+    // Clear AF for pin 2
     LEG_Ca_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL2);
+    // Clear AF for pin 6
     LEG_Cb_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL6);
+
     // AF2 select
     LEG_Ca_PORT->AFR[0] |= (GPIO_AFRL_AFSEL2_1);
     // AF3 select
@@ -176,7 +179,7 @@ void TIM_init() {
     TIM2->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
     TIM3->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
     TIM4->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
-    TIM5->CCMR1 |= (TIM_CCMR1_OC2M_2 | TIM_CCMR1_OC2M_1);
+    TIM5->CCMR2 |= (TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1);
     TIM8->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
 
     // Enable preload so new CCR values are loaded on update
@@ -184,15 +187,15 @@ void TIM_init() {
     TIM2->CCMR1 |= (TIM_CCMR1_OC1PE);
     TIM3->CCMR1 |= (TIM_CCMR1_OC1PE);
     TIM4->CCMR1 |= (TIM_CCMR1_OC1PE);
-    TIM5->CCMR1 |= (TIM_CCMR1_OC2PE);
+    TIM5->CCMR2 |= (TIM_CCMR2_OC3PE);
     TIM8->CCMR1 |= (TIM_CCMR1_OC1PE);
 
-    // Set channel outputs (ch1 for most, ch2 for TIM5)
+    // Set channel outputs (ch1 for most, ch3 for TIM5)
     TIM1->CCER |= (TIM_CCER_CC1E);
     TIM2->CCER |= (TIM_CCER_CC1E);
     TIM3->CCER |= (TIM_CCER_CC1E);
     TIM4->CCER |= (TIM_CCER_CC1E);
-    TIM5->CCER |= (TIM_CCER_CC2E);
+    TIM5->CCER |= (TIM_CCER_CC3E);
     TIM8->CCER |= (TIM_CCER_CC1E);
 
     // ARR preload like CCR
@@ -232,13 +235,11 @@ void TIM_init() {
     TIM6->ARR = TIM6_FREQ_HZ - 1;
 
     // CCR value turns PWM 'off'
-    // ARR interrupt sets the pin high,
-    // but then instantly, the CCR sets it low
     TIM1->CCR1 = 0;
     TIM2->CCR1 = 0;
     TIM3->CCR1 = 0;
     TIM4->CCR1 = 0;
-    TIM5->CCR2 = 0;
+    TIM5->CCR3 = 0;
     TIM8->CCR1 = 0;
 
     TIM1->EGR |= (TIM_EGR_UG);
@@ -478,7 +479,7 @@ void home_platform() {
     const uint8_t NUM_MOTORS = 6; 
     // Loop through motors
     // todo: add rest of motors
-    for (int i = 0; i < NUM_MOTORS; i++) {
+    for (uint8_t i = 0; i < NUM_MOTORS; i++) {
         // move down at 20mm/s
         // begin in homing fast state
         stepper_move_const_vel(&motors[i], -9999999, HOMING_FAST_MM_S, HOMING_FAST);
@@ -489,9 +490,9 @@ void home_platform() {
         (motors[0].motor_state != IDLE && motors[0].motor_state != NORMAL_RUNNING) ||
         (motors[1].motor_state != IDLE && motors[1].motor_state != NORMAL_RUNNING) || 
         (motors[2].motor_state != IDLE && motors[2].motor_state != NORMAL_RUNNING) ||
-        (motors[0].motor_state != IDLE && motors[3].motor_state != NORMAL_RUNNING) ||
-        (motors[1].motor_state != IDLE && motors[4].motor_state != NORMAL_RUNNING) || 
-        (motors[2].motor_state != IDLE && motors[5].motor_state != NORMAL_RUNNING)
+        (motors[3].motor_state != IDLE && motors[3].motor_state != NORMAL_RUNNING) ||
+        (motors[4].motor_state != IDLE && motors[4].motor_state != NORMAL_RUNNING) || 
+        (motors[5].motor_state != IDLE && motors[5].motor_state != NORMAL_RUNNING)
     ) {
         for (int i = 0; i < NUM_MOTORS; i++) {
             switch (motors[i].motor_state) {
@@ -509,6 +510,17 @@ void home_platform() {
 
                 case HOMING_SLOW_BACKOFF_TRANSITION:
                     motors[i].steps_current = 0;
+
+                    uint8_t all_done = 1;
+                    for (uint8_t x = 0; x < NUM_MOTORS; x++) {
+                        if (x == 4) continue;
+                        if (x != i && motors[x].motor_state != HOMING_SLOW_BACKOFF_TRANSITION) {
+                            all_done = 0;
+                        }
+                    }
+
+                    if (!all_done) break;
+
                     stepper_move_const_vel(&motors[i], 9999999, HOMING_FAST_MM_S, EXTENSION_FAST);
                     break;
 
@@ -526,7 +538,8 @@ void home_platform() {
                 // TODO: 
                     motors[i].MAX_STEPS = motors[i].steps_current;
                     // stepper_goto_step(&motors[i], 0, HOMING_FAST_MM_S);
-                    stepper_move(&motors[i], 0, MOVE_TIME_MS);
+                    // stepper_move(&motors[i], 0, MOVE_TIME_MS);
+                    stepper_goto_step(&motors[i], motors[i].MAX_STEPS / 2, HOMING_FAST_MM_S);
                     break;
 
                 default:

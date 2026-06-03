@@ -204,17 +204,25 @@ int main(void)
   while (poll_motors_busy()) {};
 
   // Blocking call until all legs have been homed and positioned in starting position
-  home_platform();
+  // stepper_move_const_vel(&motors[0], 1000, HOMING_FAST_MM_S, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[1], 1000, HOMING_FAST_MM_S, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[2], 1000, HOMING_FAST_MM_S, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[3], 1000, HOMING_FAST_MM_S, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[4], 999999999, 1, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[5], 1000, HOMING_FAST_MM_S, NORMAL_RUNNING);
+
+
+  // home_platform();
   while (poll_motors_busy()) {};
 
   // Test sequence of moves
-  delay_stepper_ms(&motors[0], 500);
-  delay_stepper_ms(&motors[1], 500);
-  while (poll_motors_busy()) {};
+  // delay_stepper_ms(&motors[0], 500);
+  // delay_stepper_ms(&motors[1], 500);
+  // while (poll_motors_busy()) {};
 
-  for (uint8_t i = 0; i < 6; i++)
-    stepper_move(&motors[i], (motors[i].MAX_STEPS / 2), MOVE_TIME_MS);
-  while (poll_motors_busy()) {};
+  // for (uint8_t i = 0; i < 6; i++)
+  //   stepper_move(&motors[i], (motors[i].MAX_STEPS / 2), MOVE_TIME_MS);
+  // while (poll_motors_busy()) {};
 
   // delay_stepper_ms(&motors[0], 500);
   // delay_stepper_ms(&motors[1], 500);
