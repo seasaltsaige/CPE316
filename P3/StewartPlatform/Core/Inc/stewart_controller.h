@@ -54,7 +54,7 @@
 
 // --- Leg C motor 1 ---
 #define LEG_Ca_PORT     GPIOA
-#define LEG_Ca          (GPIO_PIN_2) // PA2 (TIM5_CH3)
+#define LEG_Ca          (GPIO_PIN_2) // PA2 (TIM15_CH1)
 #define DIR_PIN_C1      (GPIO_PIN_12) // PA12
 // LEG C1 EXTI interrupts
 #define HOME_PIN_C1     (GPIO_PIN_1) // PA1 - EXTI1

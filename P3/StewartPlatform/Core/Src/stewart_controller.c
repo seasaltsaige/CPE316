@@ -11,7 +11,7 @@ Stepper_t motors[6] = {
     { TIM2, &TIM2->CCR1, LEG_A_PORT, DIR_PIN_A2, HOME_PIN_A2, LIMIT_PIN_A2 },
     { TIM3, &TIM3->CCR1, LEG_B_PORT, DIR_PIN_B1, HOME_PIN_B1, LIMIT_PIN_B1 },
     { TIM4, &TIM4->CCR1, LEG_B_PORT, DIR_PIN_B2, HOME_PIN_B2, LIMIT_PIN_B2 },
-    { TIM5, &TIM5->CCR3, LEG_Ca_PORT, DIR_PIN_C1, HOME_PIN_C1, LIMIT_PIN_C1 },
+    { TIM15, &TIM15->CCR1, LEG_Ca_PORT, DIR_PIN_C1, HOME_PIN_C1, LIMIT_PIN_C1 },
     { TIM8, &TIM8->CCR1, LEG_Cb_PORT, DIR_PIN_C2, HOME_PIN_C2, LIMIT_PIN_C2 },
 };
 
@@ -20,8 +20,8 @@ void CLOCK_init() {
     // so many timers
     // platform has 6 independent steppers, so we need to be able to generate 6 independent PWM waves
     // 1 timer for acceleration/deceleration
-    RCC->APB2ENR |= RCC_APB2ENR_TIM1EN | RCC_APB2ENR_TIM8EN; 
-    RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN | RCC_APB1ENR1_TIM3EN | RCC_APB1ENR1_TIM4EN | RCC_APB1ENR1_TIM5EN | RCC_APB1ENR1_TIM6EN;
+    RCC->APB2ENR |= RCC_APB2ENR_TIM1EN | RCC_APB2ENR_TIM8EN | RCC_APB2ENR_TIM15EN; 
+    RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN | RCC_APB1ENR1_TIM3EN | RCC_APB1ENR1_TIM4EN | RCC_APB1ENR1_TIM6EN;
     // EXTI interrupts
     RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
     // Enable FPU in coprocesser
@@ -91,8 +91,8 @@ void GPIO_init() {
     // Clear AF for pin 6
     LEG_Cb_PORT->AFR[0] &= ~(GPIO_AFRL_AFRL6);
 
-    // AF2 select
-    LEG_Ca_PORT->AFR[0] |= (GPIO_AFRL_AFSEL2_1);
+    // AF14 select --- 1110 = 8 + 4 + 2 = 14
+    LEG_Ca_PORT->AFR[0] |= (GPIO_AFRL_AFSEL2_3 | GPIO_AFRL_AFSEL2_2 | GPIO_AFRL_AFSEL2_1);
     // AF3 select
     LEG_Cb_PORT->AFR[0] |= (GPIO_AFRL_AFSEL6_0 | GPIO_AFRL_AFSEL6_1);
 }
@@ -179,7 +179,7 @@ void TIM_init() {
     TIM2->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
     TIM3->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
     TIM4->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
-    TIM5->CCMR2 |= (TIM_CCMR2_OC3M_2 | TIM_CCMR2_OC3M_1);
+    TIM15->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
     TIM8->CCMR1 |= (TIM_CCMR1_OC1M_2 | TIM_CCMR1_OC1M_1);
 
     // Enable preload so new CCR values are loaded on update
@@ -187,7 +187,7 @@ void TIM_init() {
     TIM2->CCMR1 |= (TIM_CCMR1_OC1PE);
     TIM3->CCMR1 |= (TIM_CCMR1_OC1PE);
     TIM4->CCMR1 |= (TIM_CCMR1_OC1PE);
-    TIM5->CCMR2 |= (TIM_CCMR2_OC3PE);
+    TIM15->CCMR1 |= (TIM_CCMR1_OC1PE);
     TIM8->CCMR1 |= (TIM_CCMR1_OC1PE);
 
     // Set channel outputs (ch1 for most, ch3 for TIM5)
@@ -195,7 +195,7 @@ void TIM_init() {
     TIM2->CCER |= (TIM_CCER_CC1E);
     TIM3->CCER |= (TIM_CCER_CC1E);
     TIM4->CCER |= (TIM_CCER_CC1E);
-    TIM5->CCER |= (TIM_CCER_CC3E);
+    TIM15->CCER |= (TIM_CCER_CC1E);
     TIM8->CCER |= (TIM_CCER_CC1E);
 
     // ARR preload like CCR
@@ -203,7 +203,7 @@ void TIM_init() {
     TIM2->CR1 |= (TIM_CR1_ARPE);
     TIM3->CR1 |= (TIM_CR1_ARPE);
     TIM4->CR1 |= (TIM_CR1_ARPE);
-    TIM5->CR1 |= (TIM_CR1_ARPE);
+    TIM15->CR1 |= (TIM_CR1_ARPE);
     TIM8->CR1 |= (TIM_CR1_ARPE);
 
     TIM6->CR1 |= (TIM_CR1_ARPE);
@@ -211,6 +211,7 @@ void TIM_init() {
     // Enable advanced timers
     TIM1->BDTR |= (TIM_BDTR_MOE);
     TIM8->BDTR |= (TIM_BDTR_MOE);
+    TIM15->BDTR |= (TIM_BDTR_MOE);
 
     // PSC of 79 to divide 80MHz clock by 80
     // for a timer speed of 1MHz
@@ -218,7 +219,7 @@ void TIM_init() {
     TIM2->PSC = TIM_PSC - 1;
     TIM3->PSC = TIM_PSC - 1;
     TIM4->PSC = TIM_PSC - 1;
-    TIM5->PSC = TIM_PSC - 1;
+    TIM15->PSC = TIM_PSC - 1;
     TIM8->PSC = TIM_PSC - 1;
     TIM6->PSC = TIM_PSC - 1;
 
@@ -227,7 +228,7 @@ void TIM_init() {
     TIM2->ARR = 0xFFFF;
     TIM3->ARR = 0xFFFF;
     TIM4->ARR = 0xFFFF;
-    TIM5->ARR = 0xFFFF;
+    TIM15->ARR = 0xFFFF;
     TIM8->ARR = 0xFFFF;
 
     // At 1MHz, an ARR of 1000 yields
@@ -239,14 +240,14 @@ void TIM_init() {
     TIM2->CCR1 = 0;
     TIM3->CCR1 = 0;
     TIM4->CCR1 = 0;
-    TIM5->CCR3 = 0;
+    TIM15->CCR1 = 0;
     TIM8->CCR1 = 0;
 
     TIM1->EGR |= (TIM_EGR_UG);
     TIM2->EGR |= (TIM_EGR_UG);
     TIM3->EGR |= (TIM_EGR_UG);
     TIM4->EGR |= (TIM_EGR_UG);
-    TIM5->EGR |= (TIM_EGR_UG);
+    TIM15->EGR |= (TIM_EGR_UG);
     TIM8->EGR |= (TIM_EGR_UG);
 
     // Clear interrupt flags
@@ -254,7 +255,7 @@ void TIM_init() {
     TIM2->SR &= ~(TIM_SR_UIF);
     TIM3->SR &= ~(TIM_SR_UIF);
     TIM4->SR &= ~(TIM_SR_UIF);
-    TIM5->SR &= ~(TIM_SR_UIF);
+    TIM15->SR &= ~(TIM_SR_UIF);
     TIM8->SR &= ~(TIM_SR_UIF);
 
     TIM6->SR &= ~(TIM_SR_UIF);
@@ -264,7 +265,7 @@ void TIM_init() {
     TIM2->DIER |= (TIM_DIER_UIE);
     TIM3->DIER |= (TIM_DIER_UIE);
     TIM4->DIER |= (TIM_DIER_UIE);
-    TIM5->DIER |= (TIM_DIER_UIE);
+    TIM15->DIER |= (TIM_DIER_UIE);
     TIM8->DIER |= (TIM_DIER_UIE);
 
     TIM6->DIER |= (TIM_DIER_UIE);
@@ -281,10 +282,13 @@ void ISR_init() {
         (1UL << EXTI2_IRQn) |
         (1UL << EXTI3_IRQn) |
         (1UL << EXTI4_IRQn) |
-        (1UL << EXTI9_5_IRQn)
+        (1UL << EXTI9_5_IRQn) | 
+        (1UL << TIM1_BRK_TIM15_IRQn)
     );
+
+    
     NVIC->ISER[1] |= (
-        (1UL << (TIM5_IRQn - 32)) |
+        // (1UL << (TIM15_IRQn - 32)) |
         (1UL << (TIM8_UP_IRQn - 32)) |
         (1UL << (TIM6_DAC_IRQn - 32)) |
         (1UL << (EXTI15_10_IRQn - 32)) 
@@ -300,7 +304,7 @@ void ISR_init() {
     NVIC->IP[TIM2_IRQn] = 0xF0;
     NVIC->IP[TIM3_IRQn] = 0xF0;
     NVIC->IP[TIM4_IRQn] = 0xF0;
-    NVIC->IP[TIM5_IRQn] = 0xF0;
+    NVIC->IP[TIM1_BRK_TIM15_IRQn] = 0xF0;
     NVIC->IP[TIM8_UP_IRQn] = 0xF0;
     NVIC->IP[TIM6_DAC_IRQn] = 0x10;
     NVIC->IP[EXTI1_IRQn] = 0x00;

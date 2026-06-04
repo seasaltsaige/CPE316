@@ -74,7 +74,8 @@ void TIM1_UP_TIM16_IRQHandler() {
   }
 }
 
-// Stepper tick timer for LEG A, motor 2
+
+// // Stepper tick timer for LEG A, motor 2
 void TIM2_IRQHandler() {
   if (TIM2->SR & TIM_SR_UIF) {
     TIM2->SR &= ~(TIM_SR_UIF);
@@ -99,12 +100,18 @@ void TIM4_IRQHandler() {
 }
 
 // Stepper tick timer for LEG C, motor 1
-void TIM5_IRQHandler() {
-  if (TIM5->SR & TIM_SR_UIF) {
-    TIM5->SR &= ~(TIM_SR_UIF);
+void TIM1_BRK_TIM15_IRQHandler() {
+  if (TIM15->SR & TIM_SR_UIF) {
+    TIM15->SR &= ~(TIM_SR_UIF);
     stepper_tick(&motors[4]);
   }
 }
+// void TIM5_IRQHandler() {
+//   if (TIM5->SR & TIM_SR_UIF) {
+//     TIM5->SR &= ~(TIM_SR_UIF);
+//     stepper_tick(&motors[4]);
+//   }
+// }
 
 // Stepper tick timer for LEG C, motor 2
 void TIM8_IRQHandler() {
@@ -195,7 +202,6 @@ int main(void)
 
   STEWART_init();
 
-
   // Reads endstops on power up to check if any are pressed
   // if any are pressed, the motors will back off slowly from the end stop before beginning the homing routine
   for (uint8_t i = 0; i < 6; i++)
@@ -204,15 +210,7 @@ int main(void)
   while (poll_motors_busy()) {};
 
   // Blocking call until all legs have been homed and positioned in starting position
-  // stepper_move_const_vel(&motors[0], 1000, HOMING_FAST_MM_S, NORMAL_RUNNING);
-  // stepper_move_const_vel(&motors[1], 1000, HOMING_FAST_MM_S, NORMAL_RUNNING);
-  // stepper_move_const_vel(&motors[2], 1000, HOMING_FAST_MM_S, NORMAL_RUNNING);
-  // stepper_move_const_vel(&motors[3], 1000, HOMING_FAST_MM_S, NORMAL_RUNNING);
-  stepper_move_const_vel(&motors[4], 999999999, 1, NORMAL_RUNNING);
-  // stepper_move_const_vel(&motors[5], 1000, HOMING_FAST_MM_S, NORMAL_RUNNING);
-
-
-  // home_platform();
+  home_platform();
   while (poll_motors_busy()) {};
 
   // Test sequence of moves
