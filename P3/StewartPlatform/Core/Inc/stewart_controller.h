@@ -13,7 +13,7 @@
 #define MM_PER_REV           2
 #define MOVE_TIME_MS         3000
 
-#define HOMING_FAST_MM_S     10
+#define HOMING_FAST_MM_S     5
 #define HOMING_SLOW_MM_S     2
 
 #define BACKOFF_REV_CNT      1

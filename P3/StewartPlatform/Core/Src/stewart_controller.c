@@ -7,12 +7,12 @@
 #include <arm_math.h>
 
 Stepper_t motors[6] = {
-    { TIM1, &TIM1->CCR1, LEG_A_PORT, DIR_PIN_A1, HOME_PIN_A1, LIMIT_PIN_A1 },
-    { TIM2, &TIM2->CCR1, LEG_A_PORT, DIR_PIN_A2, HOME_PIN_A2, LIMIT_PIN_A2 },
-    { TIM3, &TIM3->CCR1, LEG_B_PORT, DIR_PIN_B1, HOME_PIN_B1, LIMIT_PIN_B1 },
-    { TIM4, &TIM4->CCR1, LEG_B_PORT, DIR_PIN_B2, HOME_PIN_B2, LIMIT_PIN_B2 },
-    { TIM15, &TIM15->CCR1, LEG_Ca_PORT, DIR_PIN_C1, HOME_PIN_C1, LIMIT_PIN_C1 },
-    { TIM8, &TIM8->CCR1, LEG_Cb_PORT, DIR_PIN_C2, HOME_PIN_C2, LIMIT_PIN_C2 },
+    { TIM1, &TIM1->CCR1, LEG_A_PORT, DIR_PIN_A1, HOME_PIN_A1, LIMIT_PIN_A1, EXTI_IMR1_IM4, EXTI_IMR1_IM5 },
+    { TIM2, &TIM2->CCR1, LEG_A_PORT, DIR_PIN_A2, HOME_PIN_A2, LIMIT_PIN_A2, EXTI_IMR1_IM6, EXTI_IMR1_IM7 },
+    { TIM3, &TIM3->CCR1, LEG_B_PORT, DIR_PIN_B1, HOME_PIN_B1, LIMIT_PIN_B1, EXTI_IMR1_IM14, EXTI_IMR1_IM15 },
+    { TIM4, &TIM4->CCR1, LEG_B_PORT, DIR_PIN_B2, HOME_PIN_B2, LIMIT_PIN_B2, EXTI_IMR1_IM10, EXTI_IMR1_IM11 },
+    { TIM15, &TIM15->CCR1, LEG_Ca_PORT, DIR_PIN_C1, HOME_PIN_C1, LIMIT_PIN_C1, EXTI_IMR1_IM1, EXTI_IMR1_IM9 },
+    { TIM8, &TIM8->CCR1, LEG_Cb_PORT, DIR_PIN_C2, HOME_PIN_C2, LIMIT_PIN_C2, EXTI_IMR1_IM2, EXTI_IMR1_IM3 },
 };
 
 void CLOCK_init() {
@@ -154,7 +154,7 @@ void EXTI_init() {
         EXTI_RTSR1_RT11 | EXTI_RTSR1_RT14 | EXTI_RTSR1_RT15
     );
 
-    // Disable falling edge trigger (should already be done, but doesnt hurt)
+    // Enabke falling edge trigger (should already be done, but doesnt hurt)
     EXTI->FTSR1 |= (
         EXTI_FTSR1_FT1 | EXTI_FTSR1_FT2 | EXTI_FTSR1_FT3 |
         EXTI_FTSR1_FT4 | EXTI_FTSR1_FT5 | EXTI_FTSR1_FT6 |
@@ -419,11 +419,11 @@ void stepper_tick(Stepper_t *m) {
     m->steps_current += m->current_dir;
 
     // If either finished steps, or hit software limits, exit movement
-    if (m->steps_remaining <= 0 || 
-        (m->motor_state == NORMAL_RUNNING && 
-            ((m->steps_current <= SOFTWARE_STEP_LIMIT && m->current_dir == -1) || 
-             (m->steps_current >= (m->MAX_STEPS - SOFTWARE_STEP_LIMIT) && m->current_dir == 1))
-        )
+    if (m->steps_remaining <= 0 //|| 
+        // (m->motor_state == NORMAL_RUNNING && 
+        //     ((m->steps_current <= SOFTWARE_STEP_LIMIT && m->current_dir == -1) || 
+        //      (m->steps_current >= (m->MAX_STEPS - SOFTWARE_STEP_LIMIT) && m->current_dir == 1))
+        // )
     ) {
 
         m->steps_remaining = 0;
@@ -487,12 +487,13 @@ void home_platform() {
         // move down at 20mm/s
         // begin in homing fast state
         stepper_move_const_vel(&motors[i], -9999999, HOMING_FAST_MM_S, HOMING_FAST);
+        // HAL_Delay(100);
     }
 
     // while all motors have not re-entered idle
     while (
         (motors[0].motor_state != IDLE && motors[0].motor_state != NORMAL_RUNNING) ||
-        (motors[1].motor_state != IDLE && motors[1].motor_state != NORMAL_RUNNING) || 
+        (motors[1].motor_state != IDLE && motors[1].motor_state != NORMAL_RUNNING) ||
         (motors[2].motor_state != IDLE && motors[2].motor_state != NORMAL_RUNNING) ||
         (motors[3].motor_state != IDLE && motors[3].motor_state != NORMAL_RUNNING) ||
         (motors[4].motor_state != IDLE && motors[4].motor_state != NORMAL_RUNNING) || 
@@ -514,17 +515,6 @@ void home_platform() {
 
                 case HOMING_SLOW_BACKOFF_TRANSITION:
                     motors[i].steps_current = 0;
-
-                    uint8_t all_done = 1;
-                    for (uint8_t x = 0; x < NUM_MOTORS; x++) {
-                        if (x == 4) continue;
-                        if (x != i && motors[x].motor_state != HOMING_SLOW_BACKOFF_TRANSITION) {
-                            all_done = 0;
-                        }
-                    }
-
-                    if (!all_done) break;
-
                     stepper_move_const_vel(&motors[i], 9999999, HOMING_FAST_MM_S, EXTENSION_FAST);
                     break;
 

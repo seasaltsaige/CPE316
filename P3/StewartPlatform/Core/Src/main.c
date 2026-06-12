@@ -143,11 +143,8 @@ void EXTI3_IRQHandler() {
 
 // LEG A1 HOME END STOP
 void EXTI4_IRQHandler() {
-  if (EXTI->PR1 & EXTI_PR1_PIF4) {
-
+  if (EXTI->PR1 & EXTI_PR1_PIF4)
     handle_endstop(&motors[0], HOME_ENDSTOP, EXTI_PR1_PIF4); 
-
-  }
 }
 
 void EXTI9_5_IRQHandler() {
@@ -207,11 +204,147 @@ int main(void)
   for (uint8_t i = 0; i < 6; i++)
     read_endstops_pwr_up(&motors[i]);
 
+
+  while (poll_motors_busy()) {}
+
+  // stepper_move_const_vel(&motors[0], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[1], 5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], -10000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], -10000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[4], 5000, 5, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[5], 20000, 10, NORMAL_RUNNING);
   while (poll_motors_busy()) {};
 
-  // Blocking call until all legs have been homed and positioned in starting position
-  home_platform();
+
+  for (uint8_t i = 0; i < 6; i++)
+    delay_stepper_ms(&motors[i], 500);
   while (poll_motors_busy()) {};
+  for (uint8_t i = 0; i < 6; i++)
+    delay_stepper_ms(&motors[i], 500);
+  while (poll_motors_busy()) {};
+
+  
+  // stepper_move_const_vel(&motors[0], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[1], -10000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], 20000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], 20000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[4], -10000, 5, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[5], 20000, 10, NORMAL_RUNNING);
+  while (poll_motors_busy()) {};
+
+  
+  for (uint8_t i = 0; i < 6; i++)
+    delay_stepper_ms(&motors[i], 500);
+  while (poll_motors_busy()) {};
+  for (uint8_t i = 0; i < 6; i++)
+    delay_stepper_ms(&motors[i], 500);
+  while (poll_motors_busy()) {};
+
+  // stepper_move_const_vel(&motors[0], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[1], 5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], -10000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], -10000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[4], 5000, 5, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[5], 20000, 10, NORMAL_RUNNING);
+  while (poll_motors_busy()) {};
+
+
+  for (uint8_t i = 0; i < 6; i++)
+    delay_stepper_ms(&motors[i], 500);
+  while (poll_motors_busy()) {};
+  for (uint8_t i = 0; i < 6; i++)
+    delay_stepper_ms(&motors[i], 500);
+  while (poll_motors_busy()) {};
+
+
+  stepper_move_const_vel(&motors[0], 20000, 10, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[1], -10000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], -20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], -20000, 10, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[4], -10000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[5], 20000, 10, NORMAL_RUNNING);
+  while (poll_motors_busy()) {}
+
+
+  stepper_move_const_vel(&motors[0], -40000, 10, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[1], -10000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], 40000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], 40000, 10, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[4], -10000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[5], -40000, 10, NORMAL_RUNNING);
+  while (poll_motors_busy()) {}
+
+
+
+  stepper_move_const_vel(&motors[0], 20000, 10, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[1], -10000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], -20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], -20000, 10, NORMAL_RUNNING);
+  // stepper_move_const_vel(&motors[4], -10000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[5], 20000, 10, NORMAL_RUNNING);
+  while (poll_motors_busy()) {}
+
+
+
+  
+
+  stepper_move_const_vel(&motors[0], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[1], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[4], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[5], 20000, 10, NORMAL_RUNNING);
+  while (poll_motors_busy()) {}
+
+
+  stepper_move_const_vel(&motors[0], -40000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[1], -40000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], -40000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], -40000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[4], -40000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[5], -40000, 10, NORMAL_RUNNING);
+  while (poll_motors_busy()) {}
+
+
+  stepper_move_const_vel(&motors[0], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[1], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[4], 20000, 10, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[5], 20000, 10, NORMAL_RUNNING);
+  while (poll_motors_busy()) {}
+
+
+
+  stepper_move_const_vel(&motors[0], 5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[1], -5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], 5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], -5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[4], 5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[5], -5000, 5, NORMAL_RUNNING);
+  while (poll_motors_busy()) {}
+
+
+  
+  stepper_move_const_vel(&motors[0], -10000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[1], 10000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], -10000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], 10000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[4], -10000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[5], 10000, 5, NORMAL_RUNNING);
+  while (poll_motors_busy()) {}
+
+
+  stepper_move_const_vel(&motors[0], 5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[1], -5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[2], 5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[3], -5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[4], 5000, 5, NORMAL_RUNNING);
+  stepper_move_const_vel(&motors[5], -5000, 5, NORMAL_RUNNING);
+  while (poll_motors_busy()) {}
+  // Blocking call until all legs have been homed and positioned in starting position
+  // home_platform();
+  // while (poll_motors_busy()) {};
 
   // Test sequence of moves
   // delay_stepper_ms(&motors[0], 500);

@@ -24,6 +24,11 @@ void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_fl
         // we will likely need to re-home
         // back off from endstop (depending on which one)
         // then switch state, then call the home function agian
+        *(m->CCR) = 0;
+        m->timer->CR1 &= ~TIM_CR1_CEN;
+        m->timer->CNT = 0;
+        m->motor_state = IDLE;
+        m->steps_current = 0;
       
         break;
 
@@ -58,7 +63,13 @@ void handle_endstop(Stepper_t *m, ENDSTOP_TYPE ext_type, uint64_t pending_irq_fl
     }
   } else {
     switch (m->motor_state) {
-      case NORMAL_RUNNING:
+      case NORMAL_RUNNING:  
+
+        *(m->CCR) = 0;
+        m->timer->CR1 &= ~TIM_CR1_CEN;
+        m->timer->CNT = 0;
+        m->motor_state = IDLE;
+        m->steps_current = 0;
 
         break;
 
